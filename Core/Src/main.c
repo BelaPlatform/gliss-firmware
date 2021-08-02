@@ -298,18 +298,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(PSOC_EVENT_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : SW0_Pin */
-  GPIO_InitStruct.Pin = SW0_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(SW0_GPIO_Port, &GPIO_InitStruct);
-
   /*Configure GPIO pins : SW_LED_Pin DEBUG1_Pin DEBUG2_Pin */
   GPIO_InitStruct.Pin = SW_LED_Pin|DEBUG1_Pin|DEBUG2_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : SW0_Pin */
+  GPIO_InitStruct.Pin = SW0_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(SW0_GPIO_Port, &GPIO_InitStruct);
 
 }
 
