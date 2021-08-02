@@ -58,6 +58,24 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define TRILL_3V3_Pin GPIO_PIN_0
+#define TRILL_3V3_GPIO_Port GPIOA
+#define PSOC_PULLUP_SDA_Pin GPIO_PIN_1
+#define PSOC_PULLUP_SDA_GPIO_Port GPIOA
+#define ADC_DIG_IN_Pin GPIO_PIN_0
+#define ADC_DIG_IN_GPIO_Port GPIOB
+#define DEBUG0_Pin GPIO_PIN_15
+#define DEBUG0_GPIO_Port GPIOA
+#define PSOC_EVENT_Pin GPIO_PIN_3
+#define PSOC_EVENT_GPIO_Port GPIOB
+#define SW0_Pin GPIO_PIN_4
+#define SW0_GPIO_Port GPIOB
+#define SW_LED_Pin GPIO_PIN_5
+#define SW_LED_GPIO_Port GPIOB
+#define DEBUG1_Pin GPIO_PIN_6
+#define DEBUG1_GPIO_Port GPIOB
+#define DEBUG2_Pin GPIO_PIN_7
+#define DEBUG2_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
