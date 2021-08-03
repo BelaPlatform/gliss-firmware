@@ -1,0 +1,6 @@
+[submodule "TrillRackApplication/trill-neopixel"]
+	path = TrillRackApplication/trill-neopixel
+	url = git@github.com:giuliomoro/trill-neopixel.git
+[submodule "TrillRackApplication"]
+	path = TrillRackApplication
+	url = git@github.com:BelaPlatform/TrillRackApplication.git
