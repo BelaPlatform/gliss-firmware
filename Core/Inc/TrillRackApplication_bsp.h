@@ -3,6 +3,8 @@
 
 extern TIM_HandleTypeDef htim1;
 #define gpioHtim (&htim1)
+#define gpioHtimChannelIn 1
+#define gpioHtimChannelOut 2
 extern TIM_HandleTypeDef htim2;
 #define neoPixelHtim htim2
 #define neoPixelHtim_TIM_CHANNEL_x TIM_CHANNEL_4
@@ -19,7 +21,3 @@ extern DAC_HandleTypeDef hdac1;
 #define dac1Channel DAC_CHANNEL_2
 extern ADC_HandleTypeDef hadc2;
 #define adcHandle hadc2
-
-// TODO: fix the below
-#define DEBUG3_Pin GPIO_PIN_7
-#define DEBUG3_GPIO_Port GPIOB
