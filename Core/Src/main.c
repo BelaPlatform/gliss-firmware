@@ -124,7 +124,9 @@ int main(void)
   MX_TIM6_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-  TrillRackApplication();
+  int ret = TrillRackApplication();
+  fprintf("TrillRackApplication returned %d\n", ret);
+  Error_Handler();
   /* USER CODE END 2 */
 
   /* Infinite loop */
