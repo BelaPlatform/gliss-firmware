@@ -5,6 +5,7 @@ extern TIM_HandleTypeDef htim1;
 #define gpioHtim (&htim1)
 extern TIM_HandleTypeDef htim2;
 #define neoPixelHtim htim2
+#define neoPixelHtim_TIM_CHANNEL_x TIM_CHANNEL_4
 extern TIM_HandleTypeDef htim6;
 #define dacAdcHtim htim6
 extern UART_HandleTypeDef huart2;
