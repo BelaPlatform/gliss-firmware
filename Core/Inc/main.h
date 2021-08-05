@@ -60,6 +60,7 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define TIM2_COUNTER_PERIOD 212
 #define TRILL_3V3_Pin GPIO_PIN_0
 #define TRILL_3V3_GPIO_Port GPIOA
 #define PSOC_PULLUP_SDA_Pin GPIO_PIN_1
