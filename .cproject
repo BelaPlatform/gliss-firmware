@@ -209,11 +209,11 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="USB_Device"/>
-						<entry excluding="issp-programmer-stm32/main.c|issp-programmer-stm32/old|trill-neopixel/render.cpp|trill-neopixel/SpidevNeoPixels.cpp|trill-neopixel/BelaAudioNeoPixels.cpp" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="TrillRackApplication"/>
 						<entry excluding="Src/syscalls.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Middlewares"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
+						<entry excluding="ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Middlewares"/>
+						<entry excluding="issp-programmer-stm32/main.c|issp-programmer-stm32/old|trill-neopixel/render.cpp|trill-neopixel/SpidevNeoPixels.cpp|trill-neopixel/BelaAudioNeoPixels.cpp" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="TrillRackApplication"/>
+						<entry excluding="App/usbd_cdc_if.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="USB_Device"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -423,11 +423,11 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
-						<entry excluding="issp-programmer-stm32/main.c|issp-programmer-stm32/old|trill-neopixel/render.cpp|trill-neopixel/SpidevNeoPixels.cpp|trill-neopixel/BelaAudioNeoPixels.cpp" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="TrillRackApplication"/>
 						<entry excluding="Src/syscalls.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="USB_Device"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Middlewares"/>
+						<entry excluding="ST/STM32_USB_Device_Library/Class/CDC/Src/usbd_cdc.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Middlewares"/>
+						<entry excluding="issp-programmer-stm32/main.c|issp-programmer-stm32/old|trill-neopixel/render.cpp|trill-neopixel/SpidevNeoPixels.cpp|trill-neopixel/BelaAudioNeoPixels.cpp" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="TrillRackApplication"/>
+						<entry excluding="App/usbd_cdc_if.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="USB_Device"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
