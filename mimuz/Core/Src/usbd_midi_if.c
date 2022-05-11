@@ -10,7 +10,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "usbd_midi_if.h"
-#include "stm32f0xx_hal.h"
+#include "stm32g4xx_hal.h"
 #include "queue32.h"
 
 // basic midi rx/tx functions

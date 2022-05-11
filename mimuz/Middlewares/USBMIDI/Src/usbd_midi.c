@@ -10,9 +10,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "usbd_midi.h"
 #include "usbd_desc.h"
-#include "stm32f0xx_hal_conf.h"
+#include "stm32g4xx_hal_conf.h"
 #include "usbd_ctlreq.h"
-#include "stm32f0xx_hal.h"
+#include "stm32g4xx_hal.h"
 
 static uint8_t  USBD_MIDI_Init (USBD_HandleTypeDef *pdev, uint8_t cfgidx);
 static uint8_t  USBD_MIDI_DeInit (USBD_HandleTypeDef *pdev, uint8_t cfgidx);
