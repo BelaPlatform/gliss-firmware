@@ -1,4 +1,8 @@
 /* USER CODE BEGIN Header */
+// we should really remove the usbd_cdc* includes below, but in the meantime we
+// prevent them from being included by defining their respective constants
+#define __USB_CDC_H
+#define __USBD_CDC_IF_H__
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
@@ -10,6 +14,9 @@
 #include "usbd_cdc_if.h"
 
 /* USER CODE BEGIN Includes */
+#include "usbd_midi.h"
+#include "usbd_midi_if.h"
+
 /* USER CODE END Includes */
 
 /* USER CODE BEGIN PV */
@@ -42,6 +49,7 @@ extern USBD_DescriptorsTypeDef CDC_Desc;
 void MX_USB_Device_Init(void)
 {
   /* USER CODE BEGIN USB_Device_Init_PreTreatment */
+#if 0
   /* USER CODE END USB_Device_Init_PreTreatment */
 
   /* Init Device Library, add supported class and start the library. */
@@ -58,6 +66,27 @@ void MX_USB_Device_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN USB_Device_Init_PostTreatment */
+#endif
+  // code below is copied and adapted from above
+  // Still using the misleading name "CDC_Desc", even though there is nothing CDC-specific there
+  /* Init Device Library, add supported class and start the library. */
+  if (USBD_Init(&hUsbDeviceFS, &CDC_Desc, DEVICE_FS) != USBD_OK)
+  {
+    Error_Handler();
+  }
+  if (USBD_RegisterClass(&hUsbDeviceFS, &USBD_MIDI) != USBD_OK)
+  {
+    Error_Handler();
+  }
+  if (USBD_MIDI_RegisterInterface(&hUsbDeviceFS, &USBD_Interface_fops_FS) != USBD_OK)
+  {
+    Error_Handler();
+  }
+  if (USBD_Start(&hUsbDeviceFS) != USBD_OK)
+  {
+    Error_Handler();
+  }
+
   /* USER CODE END USB_Device_Init_PostTreatment */
 }
 
