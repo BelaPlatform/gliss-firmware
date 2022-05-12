@@ -24,6 +24,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "../../TrillRackApplication/TrillRackApplicationStm32.h"
+#include "bootloader.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -111,6 +112,25 @@ int main(void)
 
   /* USER CODE BEGIN SysInit */
 
+  // temporarily set USB_DP pin (PA12) low to force the host to re enumerate it
+  // (it will be set high again by MX_USB_DEVICE_Init() below)
+  __HAL_RCC_GPIOA_CLK_ENABLE();
+  GPIO_InitTypeDef GPIO_InitStructure;
+  GPIO_InitStructure.Pin = GPIO_PIN_12;
+  GPIO_InitStructure.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStructure.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStructure);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_12, GPIO_PIN_RESET);
+  for(volatile unsigned int i = 0; i < 1 * 1000 * 1000; ++i)
+	  ; // waste some time
+  // initialise RTC ahead of time to ensure there is nothing else
+  // initialised by the time we (possibly) jump
+  // NOTE: we do this _after_ toggling the USB_DP pin so that if we end up
+  // jumping to system bootloader, the host will be able to detect DFU
+  // NOTE: we could actually do this in  `USER CODE BEGIN RTC_Init 2`, but it's
+  // somehow clearer here even though we are duplicating the MX_RTC_Init() call
+  MX_RTC_Init();
+  bootloaderJumpIfNeeded(&hrtc);
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
