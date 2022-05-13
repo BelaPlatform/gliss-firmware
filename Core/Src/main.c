@@ -147,7 +147,7 @@ int main(void)
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
   int ret = TrillRackApplication();
-  fprintf("TrillRackApplication returned %d\n", ret);
+  printf("TrillRackApplication returned %d\n", ret);
   Error_Handler();
   /* USER CODE END 2 */
 
