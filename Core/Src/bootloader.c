@@ -34,16 +34,21 @@ static void prepareJumpOrReset()
 	__enable_irq();
 }
 
+static void writeToBackupRegister(RTC_HandleTypeDef* hrtc, uint32_t value)
+{
+	// Write Back Up Register Data
+	HAL_PWR_EnableBkUpAccess();
+	// Writes a data in a RTC Backup data Register 1
+	HAL_RTCEx_BKUPWrite(hrtc, BOOTLOADER_BKP_REG, value);
+	HAL_PWR_DisableBkUpAccess();
+}
+
 __attribute__((noreturn)) void bootloaderResetTo()
 {
 	uint32_t value = kBootloaderMagicSystemBootloader;
 	prepareJumpOrReset();
-	// Write Back Up Register Data
-	HAL_PWR_EnableBkUpAccess();
-	// Writes a data in a RTC Backup data Register 1
 	extern RTC_HandleTypeDef hrtc;
-	HAL_RTCEx_BKUPWrite(&hrtc, BOOTLOADER_BKP_REG, value);
-	HAL_PWR_DisableBkUpAccess();
+	writeToBackupRegister(&hrtc, value);
 	HAL_NVIC_SystemReset();
 	while(1) // compensating for HAL_NVIC_SystemReset() not being marked as noreturn
 		;
@@ -70,11 +75,10 @@ void bootloaderJumpIfNeeded(RTC_HandleTypeDef* hrtc) {
 	// do jump to bootloader or runtime if the backup register indicates
 	// that we are not on the right one.
 	uint32_t value = HAL_RTCEx_BKUPRead(hrtc, BOOTLOADER_BKP_REG);
-	if(kBootloaderMagicSystemBootloader == value || 1)
+	if(kBootloaderMagicSystemBootloader == value)
 	{
 		// restore content so we don't get stuck here forever
-		HAL_RTCEx_BKUPWrite(hrtc, BOOTLOADER_BKP_REG, kBootloaderMagicRuntime);
-		HAL_PWR_DisableBkUpAccess();
+		writeToBackupRegister(hrtc, kBootloaderMagicRuntime);
 		// ensure elsewhere that the host is forced to
 		// re-enumerate the peripheral so it can detect it now
 		// is a DFU device.
