@@ -71,12 +71,12 @@ void Error_Handler(void);
 #define DEBUG0_GPIO_Port GPIOA
 #define PSOC_EVENT_Pin GPIO_PIN_3
 #define PSOC_EVENT_GPIO_Port GPIOB
-#define SW_LED_Pin GPIO_PIN_4
-#define SW_LED_GPIO_Port GPIOB
-#define SW0_Pin GPIO_PIN_5
+#define SW0_Pin GPIO_PIN_4
 #define SW0_GPIO_Port GPIOB
-#define DEBUG1_Pin GPIO_PIN_6
-#define DEBUG1_GPIO_Port GPIOB
+#define SW_LED_A_Pin GPIO_PIN_5
+#define SW_LED_A_GPIO_Port GPIOB
+#define SW_LED_B_Pin GPIO_PIN_6
+#define SW_LED_B_GPIO_Port GPIOB
 #define DEBUG2_Pin GPIO_PIN_7
 #define DEBUG2_GPIO_Port GPIOB
 #define DEBUG3_Pin GPIO_PIN_8
