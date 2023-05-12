@@ -70,19 +70,29 @@ __attribute__((noreturn)) void bootloaderJumpTo(uint32_t BootAddr)
 	SysMemBootJump();
 }
 
+int bootloaderShouldJump(RTC_HandleTypeDef* hrtc) {
+	uint32_t value = HAL_RTCEx_BKUPRead(hrtc, BOOTLOADER_BKP_REG);
+	if(kBootloaderMagicSystemBootloader == value)
+		return 1;
+	else
+		return 0;
+}
+
+__attribute__((noreturn)) void bootloaderJump(RTC_HandleTypeDef* hrtc)
+{
+	// restore content so we don't get stuck here forever
+	writeToBackupRegister(hrtc, kBootloaderMagicRuntime);
+	// ensure elsewhere that the host is forced to
+	// re-enumerate the peripheral so it can detect it now
+	// is a DFU device.
+	bootloaderJumpTo(SYSTEM_BOOTLOADER_START);
+}
+
 // this must be called before any DMA/Timer/IRQ configuration takes place
 void bootloaderJumpIfNeeded(RTC_HandleTypeDef* hrtc) {
 	// do jump to bootloader or runtime if the backup register indicates
 	// that we are not on the right one.
-	uint32_t value = HAL_RTCEx_BKUPRead(hrtc, BOOTLOADER_BKP_REG);
-	if(kBootloaderMagicSystemBootloader == value)
-	{
-		// restore content so we don't get stuck here forever
-		writeToBackupRegister(hrtc, kBootloaderMagicRuntime);
-		// ensure elsewhere that the host is forced to
-		// re-enumerate the peripheral so it can detect it now
-		// is a DFU device.
-		bootloaderJumpTo(SYSTEM_BOOTLOADER_START);
-	}
+	if(bootloaderShouldJump(hrtc))
+		bootloaderJump(hrtc);
 	// otherwise keep going as we are
 }
