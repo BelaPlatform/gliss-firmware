@@ -138,6 +138,13 @@ int main(void)
     bootloaderJump(&hrtc);
   }
 
+  // initialise the bare minimum to run the neopixels
+  // so we can turn them all off ASAP
+  MX_GPIO_Init();
+  MX_DMA_Init();
+  MX_TIM2_Init();
+  TrillRackApplication_earlyInit();
+  resetUsbDp(); // this shouldn't be needed here, but shouldn't hurt (besides the added delay)
   /* USER CODE END SysInit */
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
