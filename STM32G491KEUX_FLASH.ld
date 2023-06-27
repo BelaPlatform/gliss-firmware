@@ -61,6 +61,9 @@ SECTIONS
     . = ALIGN(4);
   } >FLASH
 
+  .stringIdSegment 0x8000200 : {
+    KEEP(*(.stringIdSec))
+  } >FLASH
   /* The program code and other data into "FLASH" Rom type memory */
   .text :
   {
