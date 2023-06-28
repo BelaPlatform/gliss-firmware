@@ -53,25 +53,20 @@ MEMORY
 /* Sections */
 SECTIONS
 {
-  .bootloader_img 0x8000000 :
-  {
-    KEEP(*(.bootloaderSec))
-  } >FLASH
-
   /* The startup code into "FLASH" Rom type memory */
-  .isr_vector 0x8010000:
+  .isr_vector :
   {
     . = ALIGN(4);
     KEEP(*(.isr_vector)) /* Startup code */
     . = ALIGN(4);
   } >FLASH
 
-  .stringIdSegment 0x8010200 : {
-    KEEP(*(.stringIdSec))
+  .bootloaderStringIdSegment 0x8000200 :
+  {
+    KEEP(*(.bootloaderStringIdSec))
   } >FLASH
-
   /* The program code and other data into "FLASH" Rom type memory */
-  .text 0x8010400 :
+  .bootloader 0x8000400 :
   {
     . = ALIGN(4);
     *(.text)           /* .text sections (code) */
@@ -183,6 +178,11 @@ SECTIONS
     . = . + _Min_Stack_Size;
     . = ALIGN(8);
   } >RAM
+
+  .application_img 0x8010000 :
+  {
+    KEEP(*(.applicationSec))
+  } >FLASH
 
   /* Remove information from the compiler libraries */
   /DISCARD/ :
