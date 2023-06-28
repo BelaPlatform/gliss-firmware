@@ -1,3 +1,5 @@
 .*.sw?
 Debug
 Release
+Bootloader
+bootloader_stuff/hexdumped_*.h
