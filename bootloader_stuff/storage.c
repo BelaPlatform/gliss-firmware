@@ -4,7 +4,7 @@
 
 typedef struct {
 	uint32_t baseAddress;
-	char data[kStorageSlotSize];
+	uint8_t data[kStorageSlotSize];
 	uint8_t synced;
 } Storage;
 
@@ -79,17 +79,17 @@ int storageErase(uint32_t sector)
 	return 0;
 }
 
-int storageWrite()
+int storageWriteStatic(uint32_t address, uint8_t* data, size_t len)
 {
-	const uint8_t* ptr = (uint8_t*)storage.baseAddress;
-	size_t count = countNonErasedBytes((void*)storage.baseAddress, kStorageSlotSize);
+	uint32_t startAddress = address;
+	const uint8_t* ptr = (uint8_t*)address;
+	size_t count = countNonErasedBytes((void*)address, kStorageSlotSize);
 	if(count)
 	{
 		printf("Cannot write to flash because the destination has %u non-erased bytes in the slot starting at %p\n\r", count, ptr);
 		return -3;
 	}
 	HAL_FLASH_Unlock();
-	uint32_t address = storage.baseAddress;
 #ifdef FLASH_HAS_SECTORS
 	const size_t kFlashWordSize = FLASH_NB_32BITWORD_IN_FLASHWORD * sizeof(uint32_t);
 	const int kFlashProgramType = FLASH_TYPEPROGRAM_FLASHWORD;
@@ -97,7 +97,7 @@ int storageWrite()
 	const size_t kFlashWordSize = sizeof(uint64_t);
 	const int kFlashProgramType = FLASH_TYPEPROGRAM_DOUBLEWORD;
 #endif
-	for(unsigned int idx = 0; idx < kStorageSlotSize; idx += kFlashWordSize)
+	for(unsigned int idx = 0; idx < len; idx += kFlashWordSize)
 	{
 		// writes one flash word at a time
 		HAL_StatusTypeDef ret = HAL_FLASH_Program(kFlashProgramType, address,
@@ -107,13 +107,13 @@ int storageWrite()
 #endif
 				// "conveniently", the third argument to HAL_FLASH_Program()
 				// is a pointer on the H7 ...
-				(uint32_t)(storage.data + idx)
+				(uint32_t)(data + idx)
 #else
 #ifndef STM32G4xx_HAL_FLASH_H
 #error HAL_FLASH_Program(): check meaning of third argument
 #endif
 				// ... and it's actual data on the G4
-				((uint64_t*)(storage.data  + idx))[0]
+				((uint64_t*)(data + idx))[0]
 #endif
 		);
 		if(HAL_OK != ret) {
@@ -123,10 +123,17 @@ int storageWrite()
 		address += kFlashWordSize ;
 	}
 	HAL_FLASH_Lock();
-	storage.synced = 1;
-	printf("Successfully written flash starting at %#lx (%#lx bytes written)\n\r", storage.baseAddress, address - storage.baseAddress);
-
+	printf("Successfully written flash starting at %#lx (%#lx bytes written)\n\r", startAddress, address - startAddress);
 	return 0;
+}
+
+int storageWrite()
+{
+	uint32_t address = storage.baseAddress;
+	int ret = storageWriteStatic(address, storage.data, kStorageSlotSize);
+	if(0 == ret)
+		storage.synced = 1;
+	return ret;
 }
 
 static StorageWord_t* storageGetPtr(uint32_t index)

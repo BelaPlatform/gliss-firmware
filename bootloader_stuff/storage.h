@@ -59,6 +59,9 @@ int storageErase(uint32_t sector);
  * Write to storage from memory.
  */
 int storageWrite();
+/** Write to storage from memory. Doesn't affect the internal state
+ */
+int storageWriteFree(uint32_t address, uint8_t* data, size_t len);
 /**
  * Has the latest content of the memory buffer been written to storage?
  * This function does not access the storage, and will only return TRUE if data
