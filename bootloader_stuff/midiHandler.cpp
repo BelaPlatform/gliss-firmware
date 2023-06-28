@@ -2,6 +2,9 @@
 #include "bootloader.h"
 #include "stringId.h"
 #include "storage.h"
+#include "midiHandler.h"
+#include <algorithm>
+
 #define sysexMatches(comp, args) (sizeof(comp) + args == len && 0 == memcmp(buf, comp, sizeof(comp)))
 
 constexpr uint8_t kOurSysex[] = { 0x0, 0x21, 0x3e, 0x00};
@@ -51,6 +54,20 @@ static void sendSysex(uint8_t* payload, size_t len)
 			++i;
 		}
 	}
+}
+
+static uint16_t midiToUint16(const uint8_t* data)
+{
+	return (data[0] & 0x7f) | ((data[1] & 0x7f) << 7);
+}
+static uint32_t midiToUint32(const uint8_t* data, size_t len)
+{
+	uint32_t out = 0;
+	if(len <= 4)
+		out = midiToUint16(data) | (midiToUint16(data + 2) << 14);
+	if(5 == len)
+		out |= data[5] << 28;
+	return out;
 }
 
 static uint16_t midiInputCallback(uint8_t *msg, uint16_t length)
@@ -165,7 +182,6 @@ static uint16_t midiInputCallback(uint8_t *msg, uint16_t length)
 		data[1] = bootloaderIs();
 		memcpy(data + 1, stringId, strlen(stringId) + 1); //copy also closing NULL byte
 		sendSysex(data, sizeof(data));
-		// sendMidiMessage(msg, length);
 	}
 	constexpr uint8_t kFlashErase[] = {63, 125};
 	if(sysexMatches(kFlashErase, 2))
@@ -201,11 +217,75 @@ static uint16_t midiInputCallback(uint8_t *msg, uint16_t length)
 		sendSysex(data, sizeof(data));
 	}
 	constexpr uint8_t kFlashWrite[] = {63, 124};
-	if(sysexMatches(kFlashWrite, 256 + 4))
+	if(0 == memcmp(buf, kFlashWrite, sizeof(kFlashWrite)))
 	{
 		const uint8_t* data = buf + sizeof(kFlashWrite);
-		printf("FLASH WRITE %d %d %d %d \n\r", data[0], data[1], data[2], data[3]);
-//		uint32_t target = buf[0] + (buf[1] << 7) + (buf[2] << 14) + (buf[3] << 21));
+		uint32_t target = midiToUint32(data, 4);
+		target += 0x08000000;
+		printf("FLASH WRITE %#010lx\n\r", target);
+		uint8_t err = 0;
+		if(bootloaderIs())
+		{
+			if(target < 0x08010000)
+			{
+				err = 1;
+				printf("we are bootloader, trying to flash 0x%lx\n\r", target);
+			}
+		} else {
+			if(target >= 0x08010000 && target < 0x08050000)
+			{
+				err = 2;
+				printf("we are application, trying to flash 0x%lx\n\r", target);
+			}
+		}
+		if(!err)
+		{
+			uint8_t flashData[192];
+			const uint8_t* src = data + 4;
+			uint8_t* dst = flashData;
+			size_t sLen = len - 4; // 4 bytes used for the target above
+			size_t dLen = std::min(sizeof(flashData), (3 * sLen) / 4);
+			printf("%d incoming bytes -> %d flash bytes\n\r", sLen, dLen);
+			sLen = std::min(len, 4 * sizeof(flashData) / 3);
+			size_t d = 0;
+			size_t s = 0;
+			for(; d < dLen - 2 && s < sLen - 3; )
+			{
+				dst[d] = (src[s] & 0x3f); // s0, 6 bits
+				s++;
+				dst[d] |= (src[s] & 0x03) << 6; // s1, 2 lower bits
+				d++;
+
+				dst[d] = (src[s] & 0x3c) >> 2; // s1, 4 top bits
+				s++;
+				dst[d] |= (src[s] & 0x0f) << 4; // s2, 4 lower bits
+				d++;
+
+				dst[d] = (src[s] & 0x30) >> 4; // s2, 2 upper bits
+				s++;
+				dst[d] |= (src[s] & 0x3f) << 2; // s3, 6 bits
+				s++;
+				d++;
+			}
+			printf("Received %u bytes, turned into %u bytes\n\r", s, d);
+			if(target < 0x08050000)
+			{
+				printf("not writing 0x%lx: we are still testing\n\r", target);
+				err = 3;
+			}
+			if(storageWriteStatic(target, flashData, d))
+				err = 4;
+			uint8_t data[] = {127, 124, err};
+			sendSysex(data, sizeof(data));
+		}
+		constexpr uint8_t kFlashRead[] = {63, 123};
+		if(sysexMatches(kFlashRead, 6))
+		{
+			const uint8_t* data = buf + sizeof(kFlashRead);
+			uint32_t target = midiToUint32(data, 4) + 0x08000000;
+			size_t len = midiToUint16(data + 2);
+			printf("TODO: send flash read of %d bytes at 0x%010lx\n\r", len, target);
+		}
 	}
 
 //	// program change channel 1, program 2, (i.e.: 0x0 and 0x1 respectively)
@@ -223,7 +303,7 @@ static uint16_t midiInputCallback(uint8_t *msg, uint16_t length)
 	return 0;
 }
 
-extern "C" void midiInit()
+void midiInit()
 {
 //	setHdlCtlChange(midiCtlCallback);
 	setHdlAll(midiInputCallback);
