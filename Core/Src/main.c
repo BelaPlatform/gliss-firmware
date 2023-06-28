@@ -24,6 +24,9 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "../../bootloader_stuff/retarget.h"
+#include "../../bootloader_stuff/other_section.h"
+#include "../../bootloader_stuff/stringId.h"
+#include "../../bootloader_stuff/midiHandler.h"
 #ifndef BOOTLOADER_ONLY
 #include "../../TrillRackApplication/TrillRackApplicationStm32.h"
 #endif // BOOTLOADER_ONLY
@@ -108,8 +111,7 @@ static void resetUsbDp()
   * @brief  The application entry point.
   * @retval int
   */
-#include "../../bootloader_stuff/other_section.h"
-#include "../../bootloader_stuff/stringId.h"
+
 int main(void)
 {
   /* USER CODE BEGIN 1 */
@@ -173,7 +175,6 @@ int main(void)
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
   RetargetInit(&huart2);
-  void midiInit(void);
   midiInit();
 #ifdef BOOTLOADER_ONLY
   printf("BOOTLOADER\n\r");
@@ -193,7 +194,9 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+#ifdef BOOTLOADER_ONLY
     processMidiMessage();
+#endif // BOOTLOADER_ONLY
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
