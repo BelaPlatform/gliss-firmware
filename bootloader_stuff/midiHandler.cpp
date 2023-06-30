@@ -1,21 +1,23 @@
+#ifdef USE_HAL_DRIVER
+#define GLISS
+#endif
+#ifdef GLISS
 #include "usbd_midi_if.h"
 #include "bootloader.h"
-#include "stringId.h"
 #include "storage.h"
 #include "midiHandler.h"
+#include "stringId.h"
+#else
+static const char stringId[] = "test-stringId";
+#endif // GLISS
 #include <algorithm>
+#include "sysex.h"
 
-#define sysexMatches(comp, args) (sizeof(comp) + args == len && 0 == memcmp(buf, comp, sizeof(comp)))
-
-constexpr uint8_t kOurSysex[] = { 0x0, 0x21, 0x3e, 0x00};
-static constexpr size_t kOffset = 1 + sizeof(kOurSysex);
-static constexpr size_t kExtraBytes = kOffset + 1;
-constexpr uint8_t kEox = 247;
-constexpr uint8_t kSox = 240;
-static uint8_t sysexIn[kExtraBytes + 256 + 10];
+#ifdef GLISS
 static uint8_t sysexIdx = 0;
+static std::array<uint8_t,266 + kExtraBytes> sysexIn;
 
-static void sendSysex(uint8_t* payload, size_t len)
+int sysexSend(const uint8_t* payload, size_t len)
 {
 	uint8_t msg[4];
 	size_t i = 0;
@@ -54,23 +56,10 @@ static void sendSysex(uint8_t* payload, size_t len)
 			++i;
 		}
 	}
+	return 0;
 }
 
-static uint16_t midiToUint16(const uint8_t* data)
-{
-	return (data[0] & 0x7f) | ((data[1] & 0x7f) << 7);
-}
-static uint32_t midiToUint32(const uint8_t* data, size_t len)
-{
-	uint32_t out = 0;
-	if(len <= 4)
-		out = midiToUint16(data) | (midiToUint16(data + 2) << 14);
-	if(5 == len)
-		out |= data[5] << 28;
-	return out;
-}
-
-static uint16_t midiInputCallback(uint8_t *msg, uint16_t length)
+uint16_t midiInputCallback(uint8_t *msg, uint16_t length)
 {
 	for(unsigned int n = 0; n < length; ++n)
 		printf("%02x ", msg[n]);
@@ -101,7 +90,7 @@ static uint16_t midiInputCallback(uint8_t *msg, uint16_t length)
 	for(size_t n = 0; n < count; ++n)
 	{
 		sysexIn[sysexIdx++] = msg[1 + n];
-		if(sysexIdx == sizeof(sysexIn))
+		if(sysexIdx == sysexIn.size())
 		{
 			if(n == count - 1)
 				break;
@@ -114,40 +103,55 @@ static uint16_t midiInputCallback(uint8_t *msg, uint16_t length)
 	}
 	if(!containsEox)
 		return 0;
-	size_t end = sysexIdx;
-	sysexIdx = 0; // for the next time
-	if(sysexIn[0] != kSox)
+	const size_t size = sysexIdx;
+	const uint8_t* data = sysexIn.data();
+	sysexIdx = 0; // ready for next message
+	if(!sysexIsValid(data, size))
 	{
-		printf("Invalid first byte\n\r");
+		printf("message is not valid sysex\n\r");
 		return 1;
 	}
-	if(containsEox && sysexIn[end - 1] != kEox)
+	if(!sysexForUs(data, size))
 	{
-		printf("Coudln't find EOX but it was expected\n\r");
+		printf("Not our sysex\n\r");
 		return 1;
 	}
-	for(size_t n = 0; n < sizeof(kOurSysex) && n + 1 < end; ++n)
-	{
-		if(sysexIn[n + 1] != kOurSysex[n])
-		{
-			printf("Not our sysex\n\r");
-			return 0;
-		}
-	}
-	const size_t len = end - kExtraBytes;
-	const uint8_t* buf = sysexIn + kOffset;
+	deviceProcessSysex(data + kOffset, size - kExtraBytes);
+	return 0;
+}
+void midiInit()
+{
+	setHdlAll(midiInputCallback);
+}
+#endif // GLISS
 
-	printf("payload [%d]:", end - kExtraBytes);
+void sendAck(const uint8_t* buf, size_t len, uint8_t ack)
+{
+	std::array<uint8_t,kNumAckedBytes + 2> data {};
+	size_t i = 0;
+	for(size_t n = 0; n < kAck.size(); ++n)
+		data[i++] = kAck[n];
+	for(size_t n = 0; n < kNumAckedBytes && n < len; ++n)
+		data[i++] = buf[n];
+	assert(len >= kNumAckedBytes);
+	data[i++] = ack;
+	sysexSend(data.data(), data.size());
+}
+// we receive the payload of a valid sysex message that's addressed to us
+void deviceProcessSysex(const uint8_t* buf, size_t len)
+{
+	printf("payload [%zu]:", len);
 	for(size_t n = 0; n < len; ++n)
 	{
 		printf("%d ", buf[n]);
 	}
 	printf("\n\r");
-	constexpr uint8_t kJumpToBootloader[] = {63, 126};
-	if(sysexMatches(kJumpToBootloader, 1))
+	if(sysexMsgMatches(buf, len, kJumpToBootloader, 1))
 	{
 		uint8_t byte = buf[sizeof(kJumpToBootloader)];
 		printf("JUMP TO BOOTLOADER %d\n\r", byte);
+		int ret = 0;
+#ifdef GLISS
 		BootloaderResetDest_t dest;
 		switch(byte)
 		{
@@ -168,28 +172,34 @@ static uint16_t midiInputCallback(uint8_t *msg, uint16_t length)
 		if(kBootloaderMagicNone == dest)
 			printf("Invalid jumping destination\n\r");
 		else {
-			uint8_t data[] = {127, 126, byte};
-			sendSysex(data, sizeof(data));
 			bootloaderResetTo(dest);
 		}
+#endif // GLISS
+		sendAck(buf, len, ret);
 	}
-	constexpr uint8_t kIdentify[] = {0, 0};
-	if(sysexMatches(kIdentify, 0))
+	if(sysexMsgMatches(buf, len, kIdentifyQuery, 0))
 	{
 		printf("IDENTIFY\n\r");
-		uint8_t data[2 + (strlen(stringId) + 1)];
-		data[0] = 64;
-		data[1] = bootloaderIs();
-		memcpy(data + 1, stringId, strlen(stringId) + 1); //copy also closing NULL byte
-		sendSysex(data, sizeof(data));
+		sendAck(buf, len, 0);
+		uint8_t data[sizeof(stringId) + kIdentifyReply.size()];
+		size_t i = 0;
+		for(size_t n = 0; n < kIdentifyReply.size(); ++n)
+			data[i++] = kIdentifyReply[n];
+#ifdef GLISS
+		data[i++] = bootloaderIs();
+#else // GLISS
+		data[i++] = 1;
+#endif // GLISS
+		size_t strl = strlen(stringId) + 1; //copy also the terminating NULL byte
+		memcpy(&data[i], stringId, strl);
+		sysexSend(data, i + strl);
 	}
-	constexpr uint8_t kFlashErase[] = {63, 125};
-	if(sysexMatches(kFlashErase, 2))
+	if(sysexMsgMatches(buf, len, kFlashErase, 4))
 	{
-		buf += sizeof(kFlashErase);
-		uint8_t target = buf[0] + (buf[1] << 7);
-		printf("FLASH ERASE %#x\n\r", target);
+		uint32_t target = midiToUint28(buf + kFlashErase.size());
+		printf("FLASH ERASE %p\n\r", (void*)target);
 		uint8_t err = 0;
+#ifdef GLISS
 		if(bootloaderIs())
 		{
 			if(target < 32) {
@@ -205,7 +215,7 @@ static uint16_t midiInputCallback(uint8_t *msg, uint16_t length)
 		}
 		if(target < 192)
 		{
-			printf("Still testing, can't erase %u\n\r", target);
+			printf("Still testing, can't erase %p\n\r", (void*)target);
 			err = 3;
 		}
 		if(!err)
@@ -213,17 +223,17 @@ static uint16_t midiInputCallback(uint8_t *msg, uint16_t length)
 			if(storageErase(target))
 				err = 4;
 		}
-		uint8_t data[] = {127, 125, err, target};
-		sendSysex(data, sizeof(data));
+#endif // GLISS
+		sendAck(buf, len, err);
 	}
-	constexpr uint8_t kFlashWrite[] = {63, 124};
-	if(0 == memcmp(buf, kFlashWrite, sizeof(kFlashWrite)))
+	if(sysexMsgMatches(buf, len, kFlashWrite, 4, false))
 	{
-		const uint8_t* data = buf + sizeof(kFlashWrite);
-		uint32_t target = midiToUint32(data, 4);
+		const uint8_t* data = buf + kFlashWrite.size();
+		uint32_t target = midiToUint28(data);
 		target += 0x08000000;
-		printf("FLASH WRITE %#010lx\n\r", target);
+		printf("FLASH WRITE %#010x\n\r", (unsigned)target);
 		uint8_t err = 0;
+#ifdef GLISS
 		if(bootloaderIs())
 		{
 			if(target < 0x08010000)
@@ -238,6 +248,7 @@ static uint16_t midiInputCallback(uint8_t *msg, uint16_t length)
 				printf("we are application, trying to flash 0x%lx\n\r", target);
 			}
 		}
+#endif
 		if(!err)
 		{
 			uint8_t flashData[192];
@@ -245,7 +256,7 @@ static uint16_t midiInputCallback(uint8_t *msg, uint16_t length)
 			uint8_t* dst = flashData;
 			size_t sLen = len - 4; // 4 bytes used for the target above
 			size_t dLen = std::min(sizeof(flashData), (3 * sLen) / 4);
-			printf("%d incoming bytes -> %d flash bytes\n\r", sLen, dLen);
+			printf("%zu incoming bytes -> %zu flash bytes\n\r", sLen, dLen);
 			sLen = std::min(len, 4 * sizeof(flashData) / 3);
 			size_t d = 0;
 			size_t s = 0;
@@ -267,27 +278,26 @@ static uint16_t midiInputCallback(uint8_t *msg, uint16_t length)
 				s++;
 				d++;
 			}
-			printf("Received %u bytes, turned into %u bytes\n\r", s, d);
+			printf("Received %zu bytes, turned into %zu bytes\n\r", s, d);
 			if(target < 0x08050000)
 			{
-				printf("not writing 0x%lx: we are still testing\n\r", target);
+				printf("not writing 0x%lx: we are still testing\n\r", (unsigned long)target);
 				err = 3;
 			}
+#ifdef GLISS
 			if(storageWriteStatic(target, flashData, d))
 				err = 4;
-			uint8_t data[] = {127, 124, err};
-			sendSysex(data, sizeof(data));
+#endif // GLISS
 		}
-		constexpr uint8_t kFlashRead[] = {63, 123};
-		if(sysexMatches(kFlashRead, 6))
-		{
-			const uint8_t* data = buf + sizeof(kFlashRead);
-			uint32_t target = midiToUint32(data, 4) + 0x08000000;
-			size_t len = midiToUint16(data + 2);
-			printf("TODO: send flash read of %d bytes at 0x%010lx\n\r", len, target);
-		}
+		sendAck(buf, len, err);
 	}
-
+	if(sysexMsgMatches(buf, len, kFlashRead, 6))
+	{
+		const uint8_t* data = buf + sizeof(kFlashRead);
+		uint32_t target = midiToUint28(data) + 0x08000000;
+		size_t len = midiToUint14(data + 2);
+		printf("TODO: send flash read of %zu bytes at 0x%010lx\n\r", len, (unsigned long)target);
+	}
 //	// program change channel 1, program 2, (i.e.: 0x0 and 0x1 respectively)
 //#include "bootloader.h"
 //	if(0x0c == msg[0] && 0xc0 == msg[1] && 0x01 == msg[2])
@@ -300,11 +310,5 @@ static uint16_t midiInputCallback(uint8_t *msg, uint16_t length)
 //		printf("Jumping to bootloader\n\r");
 //		bootloaderResetTo();
 //	}
-	return 0;
 }
 
-void midiInit()
-{
-//	setHdlCtlChange(midiCtlCallback);
-	setHdlAll(midiInputCallback);
-}
