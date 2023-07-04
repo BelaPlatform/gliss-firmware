@@ -5,7 +5,7 @@
 enum {
 	SYSTEM_BOOTLOADER_START = 0x1FFF0000, // for STM32G4, got this from AN2602 or 2.6.1 of the TRM
 	USER_BOOTLOADER_START = 0x08000000,
-	USER_APPLICATION_START = 0x08010000,
+	USER_APPLICATION_START = USER_BOOTLOADER_START, // for now they are the same
 };
 
 extern void main();

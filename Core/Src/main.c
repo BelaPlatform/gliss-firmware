@@ -128,14 +128,15 @@ int main(void)
   // initialise RTC ahead of time to ensure there is nothing else
   // initialised by the time we (possibly) jump
   MX_RTC_Init();
-  if(bootloaderShouldJump(&hrtc))
+  BootloaderResetDest_t to;
+  if((to = bootloaderShouldJump(&hrtc)) == kBootloaderMagicSystemBootloader)
   {
     resetUsbDp();
     // NOTE: we jump to bootloader _after_ toggling the USB_DP pin so that if we end up
     // jumping to system bootloader, the host will be able to detect DFU
     // NOTE: we could actually do this in `USER CODE BEGIN RTC_Init 2`, but it's
     // somehow clearer here even though we are duplicating the MX_RTC_Init() call
-    bootloaderJump(&hrtc);
+    bootloaderJump(&hrtc, to);
   }
 
   // initialise the bare minimum to run the neopixels
