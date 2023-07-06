@@ -2,11 +2,10 @@
 
 #define BOOTLOADER_BKP_REG RTC_BKP_DR0
 
-enum {
-	BL_SYSTEM_BOOTLOADER_START = 0x1FFF0000, // for STM32G4, got this from AN2602 or 2.6.1 of the TRM
-	BL_USER_BOOTLOADER_START = 0x08000000,
-	BL_USER_APPLICATION_START = 0x08010000,
-};
+char* const BL_SYSTEM_BOOTLOADER_START = (char*)0x1FFF0000; // for STM32G4, got this from AN2602 or 2.6.1 of the TRM
+char* const BL_USER_BOOTLOADER_START = (char*)0x08000000;
+char* const BL_USER_APPLICATION_START = (char*)0x08010000;
+char* const BL_USER_SETTINGS_START = (char*)0x08060000;
 
 extern void main();
 int bootloaderIs()
@@ -16,6 +15,19 @@ int bootloaderIs()
     else if (BL_USER_BOOTLOADER_START < BL_USER_APPLICATION_START && (uint32_t)main < BL_USER_APPLICATION_START)
         return 1;
     return 0;
+}
+
+int bootloaderIsPartOf(const void* const ptr, BootloaderResetDest_t dest)
+{
+	switch(dest)
+	{
+	case kBootloaderMagicUserBootloader:
+		return ptr >= BL_USER_BOOTLOADER_START && ptr < BL_USER_APPLICATION_START;
+	case kBootloaderMagicUserApplication:
+		return ptr >= BL_USER_APPLICATION_START && ptr < BL_USER_SETTINGS_START;
+	default:
+		return false;
+	}
 }
 
 void bootloaderSetVector()

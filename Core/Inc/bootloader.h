@@ -18,6 +18,7 @@ uint32_t bootloaderShouldJump(RTC_HandleTypeDef* hrtc);
 void bootloaderSetVector(void);
 void bootloaderJump(RTC_HandleTypeDef* hrtc, BootloaderResetDest_t to);
 int bootloaderIs();
+int bootloaderIsPartOf(BootloaderResetDest_t dest);
 
 #ifdef __cplusplus
 }
