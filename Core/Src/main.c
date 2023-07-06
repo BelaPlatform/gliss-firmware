@@ -146,7 +146,7 @@ int main(void)
     // somehow clearer here even though we are duplicating the MX_RTC_Init() call
     MX_USART2_UART_Init();
     RetargetInit(&huart2);
-    printf("Jumping to %lx\n\r", to);
+    printf("Jumping to %x\n\r", to);
     bootloaderJump(&hrtc, to);
   }
 #endif
