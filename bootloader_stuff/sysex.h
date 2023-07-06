@@ -20,6 +20,8 @@ constexpr std::array<uint8_t,2> kFlashErase = {kByteBootloader, 126};
 constexpr std::array<uint8_t,2> kFlashWrite = {kByteBootloader, 125};
 constexpr std::array<uint8_t,2> kFlashWritePayload = {kByteBootloader, 124};
 constexpr std::array<uint8_t,2> kMemoryRead = {kByteBootloader, 123};
+constexpr std::array<uint8_t,2> kTestQuery = {kByteBootloader, 122};
+constexpr std::array<uint8_t,2> kTestReply = {kByteBootloader, 121};
 constexpr size_t kFullBytesPerPayloadUnit = 7;
 constexpr size_t kMidiBytesPerPayloadUnit = kFullBytesPerPayloadUnit / 7 * 8;
 
@@ -104,20 +106,21 @@ static inline std::array<uint8_t,kMidiBytesPerPayloadUnit> payloadToMidi(const u
 			printf(">>> outByte: %02x,\n\r", outByte);
 			*out++ = outByte;
 			outBits = 0;
+			outByte = 0;
 			if(out >= outEnd)
 				break;
 		}
 		uint8_t copyBits = std::min(8 - inBits, 7 - outBits);
-		uint8_t outMask = 0x7f & (((1 << copyBits) - 1) << outBits);
 		uint8_t inMask = ((1 << copyBits) - 1) << inBits;
 		printf("copyBits: %d, inBits: %d, inMask: %02x, inByte: %02x === ", copyBits, inBits, inMask, inByte);
-		printf("outBits: %d, outMask: %02x, outByte: %02x\n\r", outBits, outMask, outByte);
-		outByte = (outByte & outMask) | (((inByte & inMask) >> inBits) << outBits);
+		printf("outBits: %d, outByte: %02x\n\r", outBits, outByte);
+		outByte |= 0x7f & (((inByte & inMask) >> inBits) << outBits);
 		outBits += copyBits;
 		inBits += copyBits;
 	}
 	return ret;
 }
+
 static inline uint16_t midiToUint14(const uint8_t* data)
 {
 	return (data[0] & 0x7f) | ((data[1] & 0x7f) << 7);

@@ -172,6 +172,15 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 		printf("%d ", buf[n]);
 	}
 	printf("\n\r");
+	if(sysexMsgMatches(buf, len, kTestQuery, 1, false))
+	{
+		size_t sz = kTestReply.size();
+		size_t payloadSz = len - kTestQuery.size();
+		uint8_t reply[sz + payloadSz];
+		memcpy(reply, kTestReply.data(), sz);
+		memcpy(reply + sz, buf + kTestQuery.size(), payloadSz);
+		sysexSend(reply, sizeof(reply));
+	}
 	if(sysexMsgMatches(buf, len, kJumpToBootloader, 1))
 	{
 		uint8_t byte = buf[sizeof(kJumpToBootloader)];
@@ -207,7 +216,8 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 	{
 		printf("IDENTIFY\n\r");
 		sendAck(buf, len, 0);
-		uint8_t data[sizeof(stringId) + kIdentifyReply.size()];
+		size_t strl = strlen(stringId) + 1; //copy also the terminating NULL byte
+		uint8_t data[strl + 1 + kIdentifyReply.size()];
 		size_t i = 0;
 		for(size_t n = 0; n < kIdentifyReply.size(); ++n)
 			data[i++] = kIdentifyReply[n];
@@ -216,8 +226,7 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 #else // GLISS
 		data[i++] = 1;
 #endif // GLISS
-		size_t strl = strlen(stringId) + 1; //copy also the terminating NULL byte
-		memcpy(&data[i], stringId, strl);
+		memcpy(data + i, stringId, strl);
 		sysexSend(data, i + strl);
 	}
 	if(sysexMsgMatches(buf, len, kFlashErase, 9))
