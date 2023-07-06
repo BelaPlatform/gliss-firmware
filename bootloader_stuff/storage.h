@@ -56,6 +56,20 @@ void storageRead();
  */
 int storageErase(uint32_t sector);
 /**
+ * Return the flash sector starting at the specified address
+ *
+ * @return a positive value denoting the flash sector starting at the specified address
+ * or -1 if the address is outside flash
+ * or -2 if the address is not aligned with a sector boundary
+ * "static method"
+ */
+int storageGetSectorFromAddress(const char* addr);
+/**
+ * Return the size of a flash sector.
+ * "static method"
+ */
+size_t storageGetSectorSize();
+/**
  * Write to storage from memory.
  */
 int storageWrite();

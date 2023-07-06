@@ -79,6 +79,25 @@ int storageErase(uint32_t sector)
 	return 0;
 }
 
+int storageGetSectorFromAddress(const char* addr)
+{
+	uint32_t ad = (uint32_t)addr;
+	if(addr < kFlashBase)
+		return -1; // outside flash
+	uint32_t offset = (ad - kFlashBase);
+	if(offset % storageGetSectorSize())
+			return -2; // unaligned
+	int sector = offset / storageGetSectorSize();
+	if(sector > 256) // this is device-specific
+		return -1; // outside flash
+	return sector;
+}
+
+size_t storageGetSectorSize()
+{
+	return kStorageSectorSize;
+}
+
 int storageWriteStatic(uint32_t address, uint8_t* data, size_t len)
 {
 	uint32_t startAddress = address;

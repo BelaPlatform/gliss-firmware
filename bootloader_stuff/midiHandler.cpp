@@ -14,6 +14,32 @@ static const char stringId[] = "test-stringId";
 #include "sysex.h"
 
 #ifdef GLISS
+int verifyFlashRangeIsWritable(const char* targetStart, const char* targetStop)
+{
+	int err = 0;
+	BootloaderResetDest_t weAre = bootloaderIs() ? kBootloaderMagicUserBootloader : kBootloaderMagicUserApplication;
+	const size_t kSz = storageGetSectorSize();
+	for(char const* target = targetStart; target < targetStop; target += kSz)
+	{
+		// verify we are trying to erase valid portions of memory
+		if(bootloaderIsPartOf(target, weAre) || bootloaderIsPartOf(target + kSz, weAre))
+		{
+			printf("cannot erase ourselves");
+			err = 3;
+			break;
+		}
+		int sector = storageGetSectorFromAddress(target);
+		if(sector < 0)
+		{
+			printf("storageGetSectorFromAddress returned %d\n\r", sector);
+			err = -sector; // 1 or 2
+			break;
+		}
+	}
+	return err;
+}
+
+
 static uint8_t sysexIdx = 0;
 static std::array<uint8_t,266 + kExtraBytes> sysexIn;
 
@@ -194,61 +220,71 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 		memcpy(&data[i], stringId, strl);
 		sysexSend(data, i + strl);
 	}
-	if(sysexMsgMatches(buf, len, kFlashErase, 4))
+	if(sysexMsgMatches(buf, len, kFlashErase, 9))
 	{
-		uint32_t target = midiToUint28(buf + kFlashErase.size());
-		printf("FLASH ERASE %p\n\r", (void*)target);
+		const uint8_t* c = buf + kFlashErase.size();
+		bool force = *c;
+		c++;
+		const char* const targetStart = (char*)(long unsigned)midiToUint28(c);
+		c += 4;
+		const char* const targetStop = (char*)(long unsigned)midiToUint28(c);
+		c += 4;
+		printf("FLASH %s ERASE %p to %p\n\r", force ? "force" : "", targetStart, targetStop);
 		uint8_t err = 0;
 #ifdef GLISS
-		if(bootloaderIs())
-		{
-			if(target < 32) {
-				printf("cannot flash ourselves");
-				err = 1;
-			}
-		} else {
-			if(target >= 32 && target < 128)
-			{
-				printf("cannot flash ourselves");
-				err = 2;
-			}
-		}
-		if(target < 192)
-		{
-			printf("Still testing, can't erase %p\n\r", (void*)target);
-			err = 3;
-		}
+		int writable = verifyFlashRangeIsWritable(targetStart, targetStop);
+		if(!writable && !force)
+			err = writable;
 		if(!err)
 		{
-			if(storageErase(target))
-				err = 4;
+			// do erase flash
+			for(const char* target = targetStart; target < targetStop; target += storageGetSectorSize())
+			{
+				unsigned int sector = storageGetSectorFromAddress(target); //already validated above
+				err = storageErase(sector);
+				if(err)
+				{
+					printf("storageErase(%u) returned %d\n\r", sector, err);
+					break;
+				}
+			}
 		}
 #endif // GLISS
 		sendAck(buf, len, err);
 	}
-	if(sysexMsgMatches(buf, len, kFlashWrite, 4, false))
+	static uint16_t pastSeq = 0;
+	if(sysexMsgMatches(buf, len, kFlashWrite, 9))
 	{
-		const uint8_t* data = buf + kFlashWrite.size();
-		uint32_t target = midiToUint28(data);
-		target += 0x08000000;
-		printf("FLASH WRITE %#010x\n\r", (unsigned)target);
+		const uint8_t* c = buf + kFlashWrite.size();
+		bool force = *c;
+		c++;
+		const char* const targetStart = (char*)(long unsigned)midiToUint28(c);
+		c += 4;
+		const char* const targetStop = (char*)(long unsigned)midiToUint28(c);
+		c += 4;
+		printf("FLASH %s WRITE %p to %p\n\r", force ? "force" : "", targetStart, targetStop);
 		uint8_t err = 0;
 #ifdef GLISS
-		if(bootloaderIs())
+		int writable = verifyFlashRangeIsWritable(targetStart, targetStop);
+		if(!writable && !force)
+			err = writable;
+#endif // GLISS
+		if(!err)
+			pastSeq = 0;
+		sendAck(buf, len, err);
+	}
+	if(sysexMsgMatches(buf, len, kFlashWritePayload, 2 + kMidiBytesPerPayloadUnit))
+	{
+		const uint8_t* c = buf + kFlashWrite.size();
+		size_t seq = midiToUint14(c);
+		c += 2;
+		int err = 0;
+		if(seq != pastSeq + 1)
 		{
-			if(target < 0x08010000)
-			{
-				err = 1;
-				printf("we are bootloader, trying to flash 0x%lx\n\r", target);
-			}
-		} else {
-			if(target >= 0x08010000 && target < 0x08050000)
-			{
-				err = 2;
-				printf("we are application, trying to flash 0x%lx\n\r", target);
-			}
+			err = 1;
 		}
-#endif
+		pastSeq = seq;
+#if 0
 		if(!err)
 		{
 			uint8_t flashData[192];
@@ -289,11 +325,12 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 				err = 4;
 #endif // GLISS
 		}
+#endif
 		sendAck(buf, len, err);
 	}
-	if(sysexMsgMatches(buf, len, kFlashRead, 6))
+	if(sysexMsgMatches(buf, len, kMemoryRead, 6))
 	{
-		const uint8_t* data = buf + sizeof(kFlashRead);
+		const uint8_t* data = buf + sizeof(kMemoryRead);
 		uint32_t target = midiToUint28(data) + 0x08000000;
 		size_t len = midiToUint14(data + 2);
 		printf("TODO: send flash read of %zu bytes at 0x%010lx\n\r", len, (unsigned long)target);
