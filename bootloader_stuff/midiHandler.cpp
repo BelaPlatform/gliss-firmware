@@ -8,7 +8,9 @@
 #include "midiHandler.h"
 #include "stringId.h"
 #else
+#include <vector>
 static const char stringId[] = "test-stringId";
+static std::vector<uint8_t> storage(512 * 1024);
 #endif // GLISS
 #include <algorithm>
 #include "sysex.h"
@@ -166,12 +168,14 @@ void sendAck(const uint8_t* buf, size_t len, uint8_t ack)
 // we receive the payload of a valid sysex message that's addressed to us
 void deviceProcessSysex(const uint8_t* buf, size_t len)
 {
+#if 0
 	printf("payload [%zu]:", len);
 	for(size_t n = 0; n < len; ++n)
 	{
 		printf("%d ", buf[n]);
 	}
 	printf("\n\r");
+#endif
 	if(sysexMsgMatches(buf, len, kTestQuery, 1, false))
 	{
 		size_t sz = kTestReply.size();
@@ -227,7 +231,7 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 		data[i++] = 1;
 #endif // GLISS
 		memcpy(data + i, stringId, strl);
-		sysexSend(data, i + strl);
+		sysexSend(data, sizeof(data));
 	}
 	if(sysexMsgMatches(buf, len, kFlashErase, 9))
 	{
@@ -261,100 +265,102 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 #endif // GLISS
 		sendAck(buf, len, err);
 	}
-	static uint16_t pastSeq = 0;
+	static uint16_t writePastSeq = 0;
+	static size_t writeIdx = 0;
+	static const uint8_t* writeTargetStart = 0;
+	static const uint8_t* writeTargetStop = 0;
+	static bool writeIsGood = false;
 	if(sysexMsgMatches(buf, len, kFlashWrite, 9))
 	{
 		const uint8_t* c = buf + kFlashWrite.size();
 		bool force = *c;
 		c++;
-		const char* const targetStart = (char*)(long unsigned)midiToUint28(c);
+		writeTargetStart = (uint8_t*)(long unsigned)midiToUint28(c);
 		c += 4;
-		const char* const targetStop = (char*)(long unsigned)midiToUint28(c);
+		writeTargetStop = (uint8_t*)(long unsigned)midiToUint28(c);
 		c += 4;
-		printf("FLASH %s WRITE %p to %p\n\r", force ? "force" : "", targetStart, targetStop);
+		printf("FLASH %s WRITE %p to %p\n\r", force ? "force" : "", writeTargetStart, writeTargetStop);
 		uint8_t err = 0;
 #ifdef GLISS
-		int writable = verifyFlashRangeIsWritable(targetStart, targetStop);
+		int writable = verifyFlashRangeIsWritable(writeTargetStart, writeTargetStop);
 		if(!writable && !force)
 			err = writable;
 #endif // GLISS
 		if(!err)
-			pastSeq = 0;
+		{
+			writeIdx = 0;
+			writePastSeq = -1;
+			writeIsGood = true;
+		} else {
+			writeIsGood = false;
+		}
 		sendAck(buf, len, err);
 	}
 	if(sysexMsgMatches(buf, len, kFlashWritePayload, 2 + kMidiBytesPerPayloadUnit))
 	{
-		const uint8_t* c = buf + kFlashWrite.size();
-		size_t seq = midiToUint14(c);
+		const uint8_t* c = buf + kFlashWritePayload.size();
+		uint16_t seq = midiToUint14(c);
 		c += 2;
-		int err = 0;
-		if(seq != pastSeq + 1)
+		int err = !writeIsGood;
+		if(seq != uint16_t(writePastSeq + 1))
 		{
-			err = 1;
-		}
-		pastSeq = seq;
-#if 0
+			err = 2;
+			writeIsGood = false;
+		} else
+			writePastSeq = seq;
 		if(!err)
 		{
-			uint8_t flashData[192];
-			const uint8_t* src = data + 4;
-			uint8_t* dst = flashData;
-			size_t sLen = len - 4; // 4 bytes used for the target above
-			size_t dLen = std::min(sizeof(flashData), (3 * sLen) / 4);
-			printf("%zu incoming bytes -> %zu flash bytes\n\r", sLen, dLen);
-			sLen = std::min(len, 4 * sizeof(flashData) / 3);
-			size_t d = 0;
-			size_t s = 0;
-			for(; d < dLen - 2 && s < sLen - 3; )
-			{
-				dst[d] = (src[s] & 0x3f); // s0, 6 bits
-				s++;
-				dst[d] |= (src[s] & 0x03) << 6; // s1, 2 lower bits
-				d++;
-
-				dst[d] = (src[s] & 0x3c) >> 2; // s1, 4 top bits
-				s++;
-				dst[d] |= (src[s] & 0x0f) << 4; // s2, 4 lower bits
-				d++;
-
-				dst[d] = (src[s] & 0x30) >> 4; // s2, 2 upper bits
-				s++;
-				dst[d] |= (src[s] & 0x3f) << 2; // s3, 6 bits
-				s++;
-				d++;
-			}
-			printf("Received %zu bytes, turned into %zu bytes\n\r", s, d);
-			if(target < 0x08050000)
-			{
-				printf("not writing 0x%lx: we are still testing\n\r", (unsigned long)target);
-				err = 3;
-			}
+			auto payload = midiToPayload(c);
 #ifdef GLISS
-			if(storageWriteStatic(target, flashData, d))
+			if(storageWriteStatic(flashTargetStart + writeIdx, payload.data(), payload.size()))
 				err = 4;
-#endif // GLISS
-		}
+#else
+			std::copy(payload.begin(), payload.end(), storage.begin() + (writeTargetStart - (uint8_t*)0x08000000) + writeIdx);
 #endif
+			writeIdx += payload.size();
+		}
 		sendAck(buf, len, err);
 	}
-	if(sysexMsgMatches(buf, len, kMemoryRead, 6))
+	if(sysexMsgMatches(buf, len, kMemoryReadQuery, 7))
 	{
-		const uint8_t* data = buf + sizeof(kMemoryRead);
-		uint32_t target = midiToUint28(data) + 0x08000000;
-		size_t len = midiToUint14(data + 2);
-		printf("TODO: send flash read of %zu bytes at 0x%010lx\n\r", len, (unsigned long)target);
+		const uint8_t* c = buf + kMemoryReadQuery.size();
+		bool force = *c;
+		c++;
+		const uint8_t* memoryStart = (uint8_t*)(long unsigned)midiToUint28(c);
+		c += 4;
+		uint16_t memSz = midiToUint14(c);
+		c += 2;
+		printf("Memory read: %u bytes starting at %p\n\r", memSz, memoryStart);
+		int err = 0;
+#ifdef GLISS
+		// TODO: find valid flash and ram ranges in the address space
+#else
+		// need to access some fake memory or we are in trouble
+		memoryStart = storage.data() + (memoryStart - (uint8_t*)0x08000000);
+		if(memSz + memoryStart > storage.data() + storage.size())
+			err = 1;
+#endif
+		ssize_t midiBytes = payloadToMidiBytes(memSz);
+		if(midiBytes < 0) // TODO: allow to read smaller number of bytes
+			err = 2;
+		if(force)
+			err = 0;
+		sendAck(buf, len, err);
+		if(!err)
+		{
+			size_t hdSz = kMemoryReadReply.size();
+			uint8_t data[hdSz + midiBytes];
+			for(size_t n = 0; n < hdSz; ++n)
+				data[n] = kMemoryReadReply[n];
+			for(size_t w = 0, r = 0; w < midiBytes && r < memSz;
+				w += kMidiBytesPerPayloadUnit,
+				r += kFullBytesPerPayloadUnit)
+			{
+				auto midi = payloadToMidi(memoryStart + r);
+				memcpy(data + hdSz + w, midi.data(), midi.size());
+			}
+			sysexSend(data, sizeof(data));
+		}
 	}
-//	// program change channel 1, program 2, (i.e.: 0x0 and 0x1 respectively)
-//#include "bootloader.h"
-//	if(0x0c == msg[0] && 0xc0 == msg[1] && 0x01 == msg[2])
-//	{
-//		np.clear();
-//		np.setPixelColor(kNumLeds - 1, 0, 255, 0);
-//		// show() may fail if another buffer is being sent right now.
-//		// TODO: wait for it but ensure the timer thread has a higher preemption priority than this one
-//		np.show();
-//		printf("Jumping to bootloader\n\r");
-//		bootloaderResetTo();
-//	}
 }
 

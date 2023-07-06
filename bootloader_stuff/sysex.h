@@ -19,10 +19,11 @@ constexpr std::array<uint8_t,2> kJumpToBootloader = {kByteBootloader, 127};
 constexpr std::array<uint8_t,2> kFlashErase = {kByteBootloader, 126};
 constexpr std::array<uint8_t,2> kFlashWrite = {kByteBootloader, 125};
 constexpr std::array<uint8_t,2> kFlashWritePayload = {kByteBootloader, 124};
-constexpr std::array<uint8_t,2> kMemoryRead = {kByteBootloader, 123};
-constexpr std::array<uint8_t,2> kTestQuery = {kByteBootloader, 122};
-constexpr std::array<uint8_t,2> kTestReply = {kByteBootloader, 121};
-constexpr size_t kFullBytesPerPayloadUnit = 7;
+constexpr std::array<uint8_t,2> kMemoryReadQuery = {kByteBootloader, 123};
+constexpr std::array<uint8_t,2> kMemoryReadReply = {kByteBootloader, 122};
+constexpr std::array<uint8_t,2> kTestQuery = {kByteBootloader, 121};
+constexpr std::array<uint8_t,2> kTestReply = {kByteBootloader, 120};
+constexpr size_t kFullBytesPerPayloadUnit = 42;
 constexpr size_t kMidiBytesPerPayloadUnit = kFullBytesPerPayloadUnit / 7 * 8;
 
 static inline bool sysexIsValid(const uint8_t* sysex, size_t sysexSize)
@@ -84,41 +85,93 @@ static inline std::array<uint8_t,4> uint28ToMidi(uint32_t val)
 	return ret;
 }
 
-static inline std::array<uint8_t,kMidiBytesPerPayloadUnit> payloadToMidi(const uint8_t* in)
+static inline ssize_t shuffleBits(uint8_t* out, const size_t outSize, const uint8_t outMaxBits, const uint8_t* in, const size_t inSize, const uint8_t inMaxBits)
 {
-	std::array<uint8_t,kMidiBytesPerPayloadUnit> ret;
-	uint8_t* out = ret.data();
-	const uint8_t* const outEnd = out + kMidiBytesPerPayloadUnit;
-
-	uint8_t inBits = 8;
+	const uint8_t* const outBak = out;
+	const uint8_t* const inEnd = in + inSize;
+	const uint8_t* const outEnd = out + outSize;
+	const uint8_t outMask = (1 << outMaxBits) - 1;
+	uint8_t inBits = inMaxBits;
 	uint8_t outBits = 0;
 	uint8_t inByte;
 	uint8_t outByte = 0;
+	ssize_t ret = 0;
 	while(1)
 	{
-		if(8 == inBits)
+		if(outMaxBits == outBits)
 		{
-			inByte = *in++;
-			inBits = 0;
-		}
-		if(7 == outBits)
-		{
-			printf(">>> outByte: %02x,\n\r", outByte);
+			// printf(">>> outByte: %02x,\n\r", outByte);
 			*out++ = outByte;
 			outBits = 0;
 			outByte = 0;
 			if(out >= outEnd)
 				break;
 		}
-		uint8_t copyBits = std::min(8 - inBits, 7 - outBits);
+		if(inMaxBits == inBits)
+		{
+			if(in >= inEnd)
+			{
+				ret = -1;
+				break;
+			}
+			inByte = *in++;
+			inBits = 0;
+		}
+		uint8_t copyBits = std::min(inMaxBits - inBits, outMaxBits - outBits);
 		uint8_t inMask = ((1 << copyBits) - 1) << inBits;
-		printf("copyBits: %d, inBits: %d, inMask: %02x, inByte: %02x === ", copyBits, inBits, inMask, inByte);
-		printf("outBits: %d, outByte: %02x\n\r", outBits, outByte);
-		outByte |= 0x7f & (((inByte & inMask) >> inBits) << outBits);
+		//printf("copyBits: %d, inBits: %d, inMask: %02x, inByte: %02x === ", copyBits, inBits, inMask, inByte);
+		//printf("outBits: %d, outByte: %02x\n\r", outBits, outByte);
+		outByte |= outMask & (((inByte & inMask) >> inBits) << outBits);
 		outBits += copyBits;
 		inBits += copyBits;
 	}
-	return ret;
+	if(ret)
+		return ret;
+	return out - outBak;
+}
+
+static inline std::array<uint8_t,kFullBytesPerPayloadUnit> midiToPayload(const uint8_t* in)
+{
+	std::array<uint8_t,kFullBytesPerPayloadUnit> out;
+	ssize_t ret = shuffleBits(out.data(), out.size(), 8, in, kMidiBytesPerPayloadUnit, 7);
+	if(ret < 0)
+	{
+		fprintf(stderr, "ERROR: ran out of input bytes\n\r");
+	}
+	if(ret != out.size())
+	{
+		fprintf(stderr, "ERROR: expected %u bytes, got %u bytes\n\r", unsigned(ret), unsigned(out.size()));
+	}
+	return out;
+}
+
+static inline std::array<uint8_t,kMidiBytesPerPayloadUnit> payloadToMidi(const uint8_t* in)
+{
+	std::array<uint8_t,kMidiBytesPerPayloadUnit> out;
+	ssize_t ret = shuffleBits(out.data(), out.size(), 7, in, kFullBytesPerPayloadUnit, 8);
+	if(ret < 0)
+	{
+		fprintf(stderr, "ERROR: ran out of input bytes\n\r");
+	}
+	if(ret != out.size())
+	{
+		fprintf(stderr, "ERROR: expected %u bytes, got %u bytes\n\r", unsigned(ret), unsigned(out.size()));
+	}
+	return out;
+}
+
+static inline ssize_t payloadToMidiBytes(size_t payloadBytes)
+{
+	if(payloadBytes % kFullBytesPerPayloadUnit)
+		return -1;
+	return payloadBytes / kFullBytesPerPayloadUnit * kMidiBytesPerPayloadUnit;
+}
+
+static inline ssize_t midiToPayloadBytes(size_t midiBytes)
+{
+	if(midiBytes % kMidiBytesPerPayloadUnit)
+		return -1;
+	return midiBytes / kMidiBytesPerPayloadUnit * kFullBytesPerPayloadUnit;
 }
 
 static inline uint16_t midiToUint14(const uint8_t* data)
