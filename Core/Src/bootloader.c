@@ -10,14 +10,15 @@ char* const BL_USER_SETTINGS_START = (char*)0x08060000;
 extern void main();
 int bootloaderIs()
 {
-    if(BL_USER_APPLICATION_START < BL_USER_BOOTLOADER_START && (uint32_t)main > BL_USER_BOOTLOADER_START)
+	const char* const mainPtr = (char*)main;
+    if(BL_USER_APPLICATION_START < BL_USER_BOOTLOADER_START && mainPtr > BL_USER_BOOTLOADER_START)
         return 1;
-    else if (BL_USER_BOOTLOADER_START < BL_USER_APPLICATION_START && (uint32_t)main < BL_USER_APPLICATION_START)
+    else if (BL_USER_BOOTLOADER_START < BL_USER_APPLICATION_START && mainPtr < BL_USER_APPLICATION_START)
         return 1;
     return 0;
 }
 
-int bootloaderIsPartOf(const void* const ptr, BootloaderResetDest_t dest)
+int bootloaderIsPartOf(const char* const ptr, BootloaderResetDest_t dest)
 {
 	switch(dest)
 	{
@@ -26,7 +27,7 @@ int bootloaderIsPartOf(const void* const ptr, BootloaderResetDest_t dest)
 	case kBootloaderMagicUserApplication:
 		return ptr >= BL_USER_APPLICATION_START && ptr < BL_USER_SETTINGS_START;
 	default:
-		return false;
+		return 0;
 	}
 }
 
@@ -42,9 +43,9 @@ void bootloaderSetVector()
     // See e.g.: https://github.com/STMicroelectronics/STM32CubeL0/pull/10 and related issues
     uint32_t addr;
     if(bootloaderIs())
-        addr = BL_USER_BOOTLOADER_START;
+        addr = (uint32_t)BL_USER_BOOTLOADER_START;
     else
-        addr = BL_USER_APPLICATION_START;
+        addr = (uint32_t)BL_USER_APPLICATION_START;
     // printf("main is %p. Vector is %p. Setting it to %p\n\r", main, (void*)SCB->VTOR, (void*)addr);
     // a similar solution is mentioned in https://stackoverflow.com/a/28689746/2958741
     SCB->VTOR = addr;
@@ -91,7 +92,7 @@ __attribute__((noreturn)) void bootloaderResetTo(BootloaderResetDest_t dest)
 		;
 }
 
-__attribute__((noreturn)) void bootloaderJumpToAddr(uint32_t BootAddr)
+__attribute__((noreturn)) void bootloaderJumpToAddr(const char* BootAddr)
 {
 	// more from https://st.force.com/community/s/article/STM32H7-bootloader-jump-from-application
 	prepareJumpOrReset();
@@ -126,7 +127,7 @@ void bootloaderJump(RTC_HandleTypeDef* hrtc, BootloaderResetDest_t to)
 	// ensure elsewhere that the host is forced to
 	// re-enumerate the peripheral so it can detect it now
 	// is a DFU device.
-	uint32_t dest = 0;
+	const char* dest = 0;
 	switch(to)
 	{
 	case kBootloaderMagicUserApplication:
