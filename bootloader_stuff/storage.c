@@ -47,7 +47,9 @@ int storageErase(uint32_t sector)
 {
 	if(0 == countNonErasedBytes(getSectorStart(sector), kStorageSectorSize))
 	{
+#ifndef BOOTLOADER_ONLY
 		printf("No need to erase sector %lu: already erased\n\r", sector);
+#endif // BOOTLOADER_ONLY
 		return 0;
 	}
 	FLASH_EraseInitTypeDef eraseInit;
@@ -75,11 +77,13 @@ int storageErase(uint32_t sector)
 		printf("Error erasing flash sector %lu: %zu bytes still non-zero\n\r", sector, count);
 		return 1;
 	}
+#ifndef BOOTLOADER_ONLY
 	printf("Successfully erased flash sector %lu\n\r", sector);
+#endif // BOOTLOADER_ONLY
 	return 0;
 }
 
-int storageGetSectorFromAddress(const char* addr)
+int storageGetSectorFromAddress(uint32_t addr)
 {
 	uint32_t ad = (uint32_t)addr;
 	if(addr < kFlashBase)
@@ -100,7 +104,9 @@ size_t storageGetSectorSize()
 
 int storageWriteStatic(uint32_t address, uint8_t* data, size_t len)
 {
+#ifndef BOOTLOADER_ONLY
 	uint32_t startAddress = address;
+#endif // BOOTLOADER_ONLY
 	const uint8_t* ptr = (uint8_t*)address;
 	size_t count = countNonErasedBytes((void*)address, kStorageSlotSize);
 	if(count)
@@ -142,7 +148,9 @@ int storageWriteStatic(uint32_t address, uint8_t* data, size_t len)
 		address += kFlashWordSize ;
 	}
 	HAL_FLASH_Lock();
+#ifndef BOOTLOADER_ONLY
 	printf("Successfully written flash starting at %#lx (%#lx bytes written)\n\r", startAddress, address - startAddress);
+#endif // BOOTLOADER_ONLY
 	return 0;
 }
 
