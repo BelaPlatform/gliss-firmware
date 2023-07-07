@@ -2,23 +2,22 @@
 
 #define BOOTLOADER_BKP_REG RTC_BKP_DR0
 
-char* const BL_SYSTEM_BOOTLOADER_START = (char*)0x1FFF0000; // for STM32G4, got this from AN2602 or 2.6.1 of the TRM
-char* const BL_USER_BOOTLOADER_START = (char*)0x08000000;
-char* const BL_USER_APPLICATION_START = (char*)0x08010000;
-char* const BL_USER_SETTINGS_START = (char*)0x08060000;
+uint32_t const BL_SYSTEM_BOOTLOADER_START = 0x1FFF0000; // for STM32G4, got this from AN2602 or 2.6.1 of the TRM
+uint32_t const BL_USER_BOOTLOADER_START = 0x08000000;
+uint32_t const BL_USER_APPLICATION_START = 0x08010000;
+uint32_t const BL_USER_SETTINGS_START = 0x08060000;
 
 extern void main();
 int bootloaderIs()
 {
-	const char* const mainPtr = (char*)main;
-    if(BL_USER_APPLICATION_START < BL_USER_BOOTLOADER_START && mainPtr > BL_USER_BOOTLOADER_START)
+    if(BL_USER_APPLICATION_START < BL_USER_BOOTLOADER_START && (uint32_t)main > BL_USER_BOOTLOADER_START)
         return 1;
-    else if (BL_USER_BOOTLOADER_START < BL_USER_APPLICATION_START && mainPtr < BL_USER_APPLICATION_START)
+    else if (BL_USER_BOOTLOADER_START < BL_USER_APPLICATION_START && (uint32_t)main < BL_USER_APPLICATION_START)
         return 1;
     return 0;
 }
 
-int bootloaderIsPartOf(const char* const ptr, BootloaderResetDest_t dest)
+int bootloaderIsPartOf(uint32_t ptr, BootloaderResetDest_t dest)
 {
 	switch(dest)
 	{
@@ -92,7 +91,7 @@ __attribute__((noreturn)) void bootloaderResetTo(BootloaderResetDest_t dest)
 		;
 }
 
-__attribute__((noreturn)) void bootloaderJumpToAddr(const char* BootAddr)
+__attribute__((noreturn)) void bootloaderJumpToAddr(uint32_t BootAddr)
 {
 	// more from https://st.force.com/community/s/article/STM32H7-bootloader-jump-from-application
 	prepareJumpOrReset();
@@ -127,7 +126,7 @@ void bootloaderJump(RTC_HandleTypeDef* hrtc, BootloaderResetDest_t to)
 	// ensure elsewhere that the host is forced to
 	// re-enumerate the peripheral so it can detect it now
 	// is a DFU device.
-	const char* dest = 0;
+	uint32_t dest = 0;
 	switch(to)
 	{
 	case kBootloaderMagicUserApplication:
