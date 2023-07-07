@@ -53,10 +53,12 @@ MEMORY
 /* Sections */
 SECTIONS
 {
+  /*
   .bootloader_img 0x8000000 :
   {
     KEEP(*(.bootloaderSec))
   } >FLASH
+  */
 
   /* The startup code into "FLASH" Rom type memory */
   .isr_vector 0x8010000:

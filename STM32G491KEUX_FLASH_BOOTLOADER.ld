@@ -66,7 +66,7 @@ SECTIONS
     KEEP(*(.bootloaderStringIdSec))
   } >FLASH
   /* The program code and other data into "FLASH" Rom type memory */
-  .bootloader 0x8000400 :
+  .text 0x8000400 :
   {
     . = ALIGN(4);
     *(.text)           /* .text sections (code) */
@@ -179,10 +179,12 @@ SECTIONS
     . = ALIGN(8);
   } >RAM
 
+  /*
   .application_img 0x8010000 :
   {
     KEEP(*(.applicationSec))
   } >FLASH
+  */
 
   /* Remove information from the compiler libraries */
   /DISCARD/ :
