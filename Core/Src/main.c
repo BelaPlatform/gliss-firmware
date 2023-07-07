@@ -137,7 +137,7 @@ int main(void)
   MX_RTC_Init();
 #ifdef BOOTLOADER_ONLY
   BootloaderResetDest_t to;
-  if((to = bootloaderShouldJump(&hrtc)))
+  if((to = bootloaderShouldJump(&hrtc)) != kBootloaderMagicNone)
   {
     resetUsbDp();
     // NOTE: we jump to bootloader _after_ toggling the USB_DP pin so that if we end up
