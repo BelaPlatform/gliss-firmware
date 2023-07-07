@@ -178,9 +178,9 @@ int main(void)
 #ifdef BOOTLOADER_ONLY
   printf("BOOTLOADER\n\r");
   printf("%s\n\r", stringId);
-  midiInit();
 //  printf("%p %c\n\r", other_section, other_section[0]);
 #endif // BOOTLOADER_ONLY
+  midiInit();
 
 #ifndef BOOTLOADER_ONLY
   int ret = TrillRackApplication();
