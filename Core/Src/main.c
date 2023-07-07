@@ -175,11 +175,11 @@ int main(void)
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
   RetargetInit(&huart2);
-  midiInit();
 #ifdef BOOTLOADER_ONLY
   printf("BOOTLOADER\n\r");
   printf("%s\n\r", stringId);
-  printf("%p %c\n\r", other_section, other_section[0]);
+  midiInit();
+//  printf("%p %c\n\r", other_section, other_section[0]);
 #endif // BOOTLOADER_ONLY
 
 #ifndef BOOTLOADER_ONLY
