@@ -6,7 +6,7 @@ extern "C" {
 
 typedef enum {
 	// first entry actually unused here
-	kBootloaderMagicNone = 0,
+	kBootloaderMagicNone = 0x12345678,
 	kBootloaderMagicUserBootloader = 0xBE7A8007, // BOOT
 	kBootloaderMagicUserApplication = 0xBE7AE4EC, // EXEC
 	kBootloaderMagicSystemBootloader = 0xBE7A5457, // SYST

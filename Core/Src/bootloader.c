@@ -109,20 +109,27 @@ __attribute__((noreturn)) void bootloaderJumpToAddr(uint32_t BootAddr)
 
 uint32_t  bootloaderShouldJump(RTC_HandleTypeDef* hrtc) {
 	uint32_t value = HAL_RTCEx_BKUPRead(hrtc, BOOTLOADER_BKP_REG);
+	// return where we should jump to, but if we are already there, return 0.
 	switch(value)
 	{
 	case kBootloaderMagicUserBootloader:
+		if(bootloaderIs())
+			return kBootloaderMagicNone;
+	// nobreak
 	case kBootloaderMagicUserApplication:
+		if(!bootloaderIs())
+			return kBootloaderMagicNone;
+	// nobreak
 	case kBootloaderMagicSystemBootloader:
 		return value;
 	}
-	return 0;
+	return kBootloaderMagicUserApplication; // by default (uninitialised backup registers, as in pristine units), go to application
 }
 
 void bootloaderJump(RTC_HandleTypeDef* hrtc, BootloaderResetDest_t to)
 {
-	// restore content so we don't get stuck here forever
-	writeToBackupRegister(hrtc, kBootloaderMagicUserApplication);
+//	 restore content so we don't get stuck here forever
+//	writeToBackupRegister(hrtc, kBootloaderMagicUserApplication);
 	// ensure elsewhere that the host is forced to
 	// re-enumerate the peripheral so it can detect it now
 	// is a DFU device.
