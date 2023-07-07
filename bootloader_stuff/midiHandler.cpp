@@ -7,21 +7,26 @@
 #include "storage.h"
 #include "midiHandler.h"
 #include "stringId.h"
+#define P(ptr) ((void*)(ptr))
 #else
 #include <vector>
 static const char stringId[] = "test-stringId";
 static std::vector<uint8_t> storage(512 * 1024);
+#include <unistd.h>
+#define P(ptr) ((void*)(unsigned long)(ptr))
 #endif // GLISS
 #include <algorithm>
 #include "sysex.h"
 
+static bool verbose = false;
 #ifdef GLISS
-int verifyFlashRangeIsWritable(const char* targetStart, const char* targetStop)
+int verifyFlashRangeIsWritable(uint32_t targetStart, uint32_t targetStop)
 {
 	int err = 0;
 	BootloaderResetDest_t weAre = bootloaderIs() ? kBootloaderMagicUserBootloader : kBootloaderMagicUserApplication;
 	const size_t kSz = storageGetSectorSize();
-	for(char const* target = targetStart; target < targetStop; target += kSz)
+	int sector = 0;
+	for(uint32_t target = targetStart; target < targetStop; target += kSz)
 	{
 		// verify we are trying to erase valid portions of memory
 		if(bootloaderIsPartOf(target, weAre) || bootloaderIsPartOf(target + kSz, weAre))
@@ -30,13 +35,16 @@ int verifyFlashRangeIsWritable(const char* targetStart, const char* targetStop)
 			err = 3;
 			break;
 		}
-		int sector = storageGetSectorFromAddress(target);
+		sector = storageGetSectorFromAddress(target);
 		if(sector < 0)
-		{
-			printf("storageGetSectorFromAddress returned %d\n\r", sector);
-			err = -sector; // 1 or 2
 			break;
-		}
+	}
+	if(sector > 0)
+		sector = storageGetSectorFromAddress(targetStop);
+	if(sector < 0)
+	{
+		printf("storageGetSectorFromAddress returned %d\n\r", sector);
+		err = -sector; // 1 or 2
 	}
 	return err;
 }
@@ -50,6 +58,12 @@ int sysexSend(const uint8_t* payload, size_t len)
 	uint8_t msg[4];
 	size_t i = 0;
 	size_t total = len + kExtraBytes;
+	if(verbose) {
+		printf("sending %u { ", len);
+		for(size_t n = 0; n < len; ++n)
+			printf("%u ", payload[n]);
+		printf("}\n\r");
+	}
 	for(size_t n = 0; n < total; ++n)
 	{
 		uint8_t byte;
@@ -64,7 +78,7 @@ int sysexSend(const uint8_t* payload, size_t len)
 			byte = payload[n - kOffset];
 		else
 			byte = kEox;
-		printf("%d\n\r", byte);
+		// printf("%d ", byte);
 		msg[1 + i] = byte;
 		bool done = (n + 1 == total);
 		bool msgRd = (i == 2) || done;
@@ -78,7 +92,7 @@ int sysexSend(const uint8_t* payload, size_t len)
 			} else
 				msg[0] = 0x4;
 			i = 0;
-			printf("%#02x %d %d %d\n\r", msg[0], msg[1], msg[2], msg[3]);
+//			printf("%#02x %d %d %d\n\r", msg[0], msg[1], msg[2], msg[3]);
 			sendMidiMessage(msg, sizeof(msg));
 		} else {
 			++i;
@@ -89,10 +103,10 @@ int sysexSend(const uint8_t* payload, size_t len)
 
 uint16_t midiInputCallback(uint8_t *msg, uint16_t length)
 {
-	for(unsigned int n = 0; n < length; ++n)
-		printf("%02x ", msg[n]);
-	if(length)
-		printf("\n\r");
+//	for(unsigned int n = 0; n < length; ++n)
+//		printf("%02x ", msg[n]);
+//	if(length)
+//		printf("\n\r");
 	size_t count = 0;
 	bool containsEox = 0;
 	switch(msg[0])
@@ -168,14 +182,15 @@ void sendAck(const uint8_t* buf, size_t len, uint8_t ack)
 // we receive the payload of a valid sysex message that's addressed to us
 void deviceProcessSysex(const uint8_t* buf, size_t len)
 {
-#if 0
-	printf("payload [%zu]:", len);
-	for(size_t n = 0; n < len; ++n)
+	if(verbose)
 	{
-		printf("%d ", buf[n]);
+		printf("payload [%u]:", (unsigned)len);
+		for(size_t n = 0; n < len; ++n)
+		{
+			printf("%d ", buf[n]);
+		}
+		printf("\n\r");
 	}
-	printf("\n\r");
-#endif
 	if(sysexMsgMatches(buf, len, kTestQuery, 1, false))
 	{
 		size_t sz = kTestReply.size();
@@ -197,6 +212,7 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 		default:
 		case 0:
 			dest = kBootloaderMagicNone;
+			ret = 1;
 			break;
 		case 1:
 			dest = kBootloaderMagicUserBootloader;
@@ -208,13 +224,18 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 			dest = kBootloaderMagicSystemBootloader;
 			break;
 		}
-		if(kBootloaderMagicNone == dest)
+		if(ret)
 			printf("Invalid jumping destination\n\r");
-		else {
-			bootloaderResetTo(dest);
-		}
 #endif // GLISS
 		sendAck(buf, len, ret);
+#ifdef GLISS
+		// ensure the host has time to read the ack before we reboot
+		void USBD_MIDI_SendPacket();
+		USBD_MIDI_SendPacket();
+		HAL_Delay(50);
+		if(!ret)
+			bootloaderResetTo(dest);
+#endif // GLISS
 	}
 	if(sysexMsgMatches(buf, len, kIdentifyQuery, 0))
 	{
@@ -238,20 +259,20 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 		const uint8_t* c = buf + kFlashErase.size();
 		bool force = *c;
 		c++;
-		const char* const targetStart = (char*)(long unsigned)midiToUint28(c);
+		uint32_t targetStart = midiToUint28(c);
 		c += 4;
-		const char* const targetStop = (char*)(long unsigned)midiToUint28(c);
+		uint32_t targetStop = midiToUint28(c);
 		c += 4;
-		printf("FLASH %s ERASE %p to %p\n\r", force ? "force" : "", targetStart, targetStop);
+		printf("FLASH %s ERASE %p to %p\n\r", force ? "force" : "", P(targetStart), P(targetStop));
 		uint8_t err = 0;
 #ifdef GLISS
 		int writable = verifyFlashRangeIsWritable(targetStart, targetStop);
-		if(!writable && !force)
+		if(writable && !force)
 			err = writable;
 		if(!err)
 		{
 			// do erase flash
-			for(const char* target = targetStart; target < targetStop; target += storageGetSectorSize())
+			for(uint32_t target = targetStart; target < targetStop; target += storageGetSectorSize())
 			{
 				unsigned int sector = storageGetSectorFromAddress(target); //already validated above
 				err = storageErase(sector);
@@ -267,19 +288,19 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 	}
 	static uint16_t writePastSeq = 0;
 	static size_t writeIdx = 0;
-	static const uint8_t* writeTargetStart = 0;
-	static const uint8_t* writeTargetStop = 0;
+	static uint32_t writeTargetStart = 0;
+	static uint32_t writeTargetStop = 0;
 	static bool writeIsGood = false;
 	if(sysexMsgMatches(buf, len, kFlashWrite, 9))
 	{
 		const uint8_t* c = buf + kFlashWrite.size();
 		bool force = *c;
 		c++;
-		writeTargetStart = (uint8_t*)(long unsigned)midiToUint28(c);
+		writeTargetStart = midiToUint28(c);
 		c += 4;
-		writeTargetStop = (uint8_t*)(long unsigned)midiToUint28(c);
+		writeTargetStop = midiToUint28(c);
 		c += 4;
-		printf("FLASH %s WRITE %p to %p\n\r", force ? "force" : "", writeTargetStart, writeTargetStop);
+		printf("FLASH %s WRITE %p to %p\n\r", force ? "force" : "", P(writeTargetStart), P(writeTargetStop));
 		uint8_t err = 0;
 #ifdef GLISS
 		int writable = verifyFlashRangeIsWritable(writeTargetStart, writeTargetStop);
@@ -301,6 +322,10 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 		const uint8_t* c = buf + kFlashWritePayload.size();
 		uint16_t seq = midiToUint14(c);
 		c += 2;
+		if(!writeIsGood)
+		{
+			printf("Uninitialised or invalidated write session\n\r");
+		}
 		int err = !writeIsGood;
 		if(seq != uint16_t(writePastSeq + 1))
 		{
@@ -308,14 +333,24 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 			writeIsGood = false;
 		} else
 			writePastSeq = seq;
+		size_t midiBytes = len - kFlashWritePayload.size() - 2;
+		size_t fullBytes = midiToPayloadBytes(midiBytes);
+		if(writeIdx + fullBytes + writeTargetStart > writeTargetStop)
+		{
+			printf("Trying to write to write from %p to %p which is beyond %p\n\r",
+				P(writeTargetStart + writeIdx), P(writeTargetStart + writeIdx + fullBytes), P(writeTargetStop));
+			err = 3;
+			writeIsGood = false;
+		}
 		if(!err)
 		{
 			auto payload = midiToPayload(c);
 #ifdef GLISS
-			if(storageWriteStatic(flashTargetStart + writeIdx, payload.data(), payload.size()))
+			static_assert(payload.size() % sizeof(uint64_t) == 0, "payload is not compatible with flash word size");
+			if(storageWriteStatic(writeTargetStart + writeIdx, payload.data(), payload.size()))
 				err = 4;
 #else
-			std::copy(payload.begin(), payload.end(), storage.begin() + (writeTargetStart - (uint8_t*)0x08000000) + writeIdx);
+			std::copy(payload.begin(), payload.end(), storage.begin() + (writeTargetStart - 0x08000000) + writeIdx);
 #endif
 			writeIdx += payload.size();
 		}
@@ -330,10 +365,11 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 		c += 4;
 		uint16_t memSz = midiToUint14(c);
 		c += 2;
-		printf("Memory read: %u bytes starting at %p\n\r", memSz, memoryStart);
+		if(verbose)
+			printf("Memory read: %u bytes starting at %p\n\r", memSz, memoryStart);
 		int err = 0;
 #ifdef GLISS
-		// TODO: find valid flash and ram ranges in the address space
+		// TODO: find valid flash and RAM ranges in the address space
 #else
 		// need to access some fake memory or we are in trouble
 		memoryStart = storage.data() + (memoryStart - (uint8_t*)0x08000000);
@@ -346,13 +382,16 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 		if(force)
 			err = 0;
 		sendAck(buf, len, err);
+#ifndef GLISS
+		usleep(1000); // it would occasionally fail without this on macos with virtual midi ports ...
+#endif
 		if(!err)
 		{
 			size_t hdSz = kMemoryReadReply.size();
 			uint8_t data[hdSz + midiBytes];
 			for(size_t n = 0; n < hdSz; ++n)
 				data[n] = kMemoryReadReply[n];
-			for(size_t w = 0, r = 0; w < midiBytes && r < memSz;
+			for(size_t w = 0, r = 0; w < size_t(midiBytes) && r < memSz;
 				w += kMidiBytesPerPayloadUnit,
 				r += kFullBytesPerPayloadUnit)
 			{

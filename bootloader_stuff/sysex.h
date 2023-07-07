@@ -23,7 +23,7 @@ constexpr std::array<uint8_t,2> kMemoryReadQuery = {kByteBootloader, 123};
 constexpr std::array<uint8_t,2> kMemoryReadReply = {kByteBootloader, 122};
 constexpr std::array<uint8_t,2> kTestQuery = {kByteBootloader, 121};
 constexpr std::array<uint8_t,2> kTestReply = {kByteBootloader, 120};
-constexpr size_t kFullBytesPerPayloadUnit = 42;
+constexpr size_t kFullBytesPerPayloadUnit = 56;
 constexpr size_t kMidiBytesPerPayloadUnit = kFullBytesPerPayloadUnit / 7 * 8;
 
 static inline bool sysexIsValid(const uint8_t* sysex, size_t sysexSize)
