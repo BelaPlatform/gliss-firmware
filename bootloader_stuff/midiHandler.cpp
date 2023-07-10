@@ -25,7 +25,7 @@ static bool verbose = false;
 int verifyFlashRangeIsWritable(uint32_t targetStart, uint32_t targetStop)
 {
 	int err = 0;
-	BootloaderResetDest_t weAre = bootloaderIs() ? kBootloaderMagicUserBootloader : kBootloaderMagicUserApplication;
+	BootloaderResetDest_t weAre = bootloaderIsFlasher() ? kBootloaderMagicUserFlasher : kBootloaderMagicUserApplication;
 	const size_t kSz = storageGetSectorSize();
 	int sector = 0;
 	for(uint32_t target = targetStart; target < targetStop; target += kSz)
@@ -212,17 +212,17 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 		switch(byte)
 		{
 		default:
-		case 0:
+		case kPartitionIdNone:
 			dest = kBootloaderMagicNone;
 			ret = 1;
 			break;
-		case 1:
-			dest = kBootloaderMagicUserBootloader;
+		case kPartitionIdFlasher:
+			dest = kBootloaderMagicUserFlasher;
 			break;
-		case 2:
+		case kPartitionIdApplication:
 			dest = kBootloaderMagicUserApplication;
 			break;
-		case 3:
+		case kPartitionIdSystemBootloader:
 			dest = kBootloaderMagicSystemBootloader;
 			break;
 		}
@@ -250,11 +250,12 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 		for(size_t n = 0; n < kIdentifyReply.size(); ++n)
 			data[i++] = kIdentifyReply[n];
 #ifdef GLISS
-		data[i++] = bootloaderIs();
+		data[i++] = bootloaderIsFlasher() ? kPartitionIdFlasher : kPartitionIdApplication;
 #else // GLISS
 		data[i++] = 1;
 #endif // GLISS
-		memcpy(data + i, stringId, strl);
+		for(size_t n = 0; n < strl; ++n)
+			data[i++] = stringId[n] & 0x7f;
 		sysexSend(data, sizeof(data));
 	}
 	if(sysexMsgMatches(buf, len, kFlashErase, 9))

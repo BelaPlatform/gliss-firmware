@@ -7,6 +7,12 @@ constexpr std::array<uint8_t,4> kOurSysex = { 0x0, 0x21, 0x3e, 0x00}; // last is
 static constexpr size_t kOffset = 1 + kOurSysex.size();;
 static constexpr size_t kTrailingBytes = 1;
 static constexpr size_t kExtraBytes = kOffset + kTrailingBytes;
+enum {
+	kPartitionIdNone = 0,
+	kPartitionIdFlasher = 1,
+	kPartitionIdApplication = 2,
+	kPartitionIdSystemBootloader = 3,
+};
 
 constexpr uint8_t kByteSystem = 5;
 constexpr uint8_t kByteAck = 100;
