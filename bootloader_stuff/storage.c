@@ -108,10 +108,10 @@ int storageWriteStatic(uint32_t address, uint8_t* data, size_t len)
 	uint32_t startAddress = address;
 #endif // BOOTLOADER_ONLY
 	const uint8_t* ptr = (uint8_t*)address;
-	size_t count = countNonErasedBytes((void*)address, kStorageSlotSize);
+	size_t count = countNonErasedBytes((void*)address, len);
 	if(count)
 	{
-		printf("Cannot write to flash because the destination has %u non-erased bytes in the slot starting at %p\n\r", count, ptr);
+		printf("Cannot write to flash because the destination has %u of %u non-erased bytes starting at %p\n\r", count, len, ptr);
 		return -3;
 	}
 	HAL_FLASH_Unlock();
