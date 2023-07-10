@@ -115,6 +115,21 @@ static void resetUsbDp()
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+#ifdef CFG_BOOTLOADER
+  // minimal initialisation to:
+  // - keep code size to a minimum
+  // - ensure there is nothing else initialised by the time we jump
+  HAL_Init();
+  SystemClock_Config();
+  MX_RTC_Init();
+  BootloaderResetDest_t to = bootloaderGetDest(&hrtc);
+  // NOTE: we jump to bootloader _after_ toggling the USB_DP pin so that if we end up
+  // jumping to system bootloader, the host will be able to detect DFU
+  resetUsbDp();
+  bootloaderJump(&hrtc, to);
+  while(1)
+	  ;
+#else //!CFG_BOOTLOADER
   bootloaderSetVector();
   /* USER CODE END 1 */
 
@@ -132,25 +147,6 @@ int main(void)
 
   /* USER CODE BEGIN SysInit */
 
-  // initialise RTC ahead of time to ensure there is nothing else
-  // initialised by the time we (possibly) jump
-  MX_RTC_Init();
-#ifdef BOOTLOADER_ONLY
-  BootloaderResetDest_t to;
-  if((to = bootloaderShouldJump(&hrtc)) != kBootloaderMagicNone)
-  {
-    resetUsbDp();
-    // NOTE: we jump to bootloader _after_ toggling the USB_DP pin so that if we end up
-    // jumping to system bootloader, the host will be able to detect DFU
-    // NOTE: we could actually do this in `USER CODE BEGIN RTC_Init 2`, but it's
-    // somehow clearer here even though we are duplicating the MX_RTC_Init() call
-    MX_USART2_UART_Init();
-    RetargetInit(&huart2);
-    printf("Jumping to %x\n\r", to);
-    bootloaderJump(&hrtc, to);
-  }
-#endif
-
   // initialise the bare minimum to run the neopixels
   // so we can turn them all off ASAP
   MX_GPIO_Init();
@@ -159,7 +155,7 @@ int main(void)
 #ifndef BOOTLOADER_ONLY
   TrillRackApplication_earlyInit();
 #endif //BOOTLOADER_ONLY
-  resetUsbDp(); // this shouldn't be needed here, but shouldn't hurt (besides the added delay)
+  resetUsbDp();
   /* USER CODE END SysInit */
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
@@ -175,11 +171,7 @@ int main(void)
   MX_RTC_Init();
   /* USER CODE BEGIN 2 */
   RetargetInit(&huart2);
-#ifdef BOOTLOADER_ONLY
-  printf("BOOTLOADER\n\r");
-  printf("%s\n\r", stringId);
-//  printf("%p %c\n\r", other_section, other_section[0]);
-#endif // BOOTLOADER_ONLY
+  printf("Booting %s: %s\n\r", bootloaderIsFlasher() ? "flasher" : "application", kVerificationBlock.stringId);
   midiInit();
 
 #ifndef BOOTLOADER_ONLY
@@ -199,6 +191,7 @@ int main(void)
 #endif // BOOTLOADER_ONLY
     /* USER CODE BEGIN 3 */
   }
+#endif // !CFG_BOOTLOADER
   /* USER CODE END 3 */
 }
 

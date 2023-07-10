@@ -7,17 +7,17 @@ extern "C" {
 typedef enum {
 	// first entry actually unused here
 	kBootloaderMagicNone = 0x12345678,
-	kBootloaderMagicUserBootloader = 0xBE7A8007, // BOOT
+	kBootloaderMagicUserFlasher = 0xBE7A8007, // BOOT
 	kBootloaderMagicUserApplication = 0xBE7AE4EC, // EXEC
 	kBootloaderMagicSystemBootloader = 0xBE7A5457, // SYST
 } BootloaderResetDest_t;
 
 __attribute__((noreturn)) void bootloaderResetTo(BootloaderResetDest_t dest);
 void bootloaderJumpIfNeeded(RTC_HandleTypeDef* hrtc);
-uint32_t bootloaderShouldJump(RTC_HandleTypeDef* hrtc);
+uint32_t bootloaderGetDest(RTC_HandleTypeDef* hrtc);
 void bootloaderSetVector(void);
 void bootloaderJump(RTC_HandleTypeDef* hrtc, BootloaderResetDest_t to);
-int bootloaderIs();
+int bootloaderIsFlasher();
 int bootloaderIsPartOf(uint32_t ptr, BootloaderResetDest_t dest);
 
 #ifdef __cplusplus
