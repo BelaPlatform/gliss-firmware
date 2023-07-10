@@ -56,19 +56,15 @@ MEMORY
 SECTIONS
 {
   /* The startup code into "FLASH" Rom type memory */
-  .isr_vector 0x8002000:
+  .isr_vector :
   {
     . = ALIGN(4);
     KEEP(*(.isr_vector)) /* Startup code */
     . = ALIGN(4);
-  } >FLASH_FLASHER
-
-  .stringIdSegment 0x8002200 : {
-    KEEP(*(.stringIdSec))
-  } >FLASH_FLASHER
+  } >FLASH_BOOTLOADER
 
   /* The program code and other data into "FLASH" Rom type memory */
-  .text 0x8002800 :
+  .text :
   {
     . = ALIGN(4);
     *(.text)           /* .text sections (code) */
@@ -82,7 +78,7 @@ SECTIONS
 
     . = ALIGN(4);
     _etext = .;        /* define a global symbols at end of code */
-  } >FLASH_FLASHER
+  } >FLASH_BOOTLOADER
 
   /* Constant data into "FLASH" Rom type memory */
   .rodata :
@@ -91,13 +87,13 @@ SECTIONS
     *(.rodata)         /* .rodata sections (constants, strings, etc.) */
     *(.rodata*)        /* .rodata* sections (constants, strings, etc.) */
     . = ALIGN(4);
-  } >FLASH_FLASHER
+  } >FLASH_BOOTLOADER
 
   .ARM.extab   : {
     . = ALIGN(4);
     *(.ARM.extab* .gnu.linkonce.armextab.*)
     . = ALIGN(4);
-  } >FLASH_FLASHER
+  } >FLASH_BOOTLOADER
 
   .ARM : {
     . = ALIGN(4);
@@ -105,7 +101,7 @@ SECTIONS
     *(.ARM.exidx*)
     __exidx_end = .;
     . = ALIGN(4);
-  } >FLASH_FLASHER
+  } >FLASH_BOOTLOADER
 
   .preinit_array     :
   {
@@ -114,7 +110,7 @@ SECTIONS
     KEEP (*(.preinit_array*))
     PROVIDE_HIDDEN (__preinit_array_end = .);
     . = ALIGN(4);
-  } >FLASH_FLASHER
+  } >FLASH_BOOTLOADER
 
   .init_array :
   {
@@ -124,7 +120,7 @@ SECTIONS
     KEEP (*(.init_array*))
     PROVIDE_HIDDEN (__init_array_end = .);
     . = ALIGN(4);
-  } >FLASH_FLASHER
+  } >FLASH_BOOTLOADER
 
   .fini_array :
   {
@@ -134,7 +130,7 @@ SECTIONS
     KEEP (*(.fini_array*))
     PROVIDE_HIDDEN (__fini_array_end = .);
     . = ALIGN(4);
-  } >FLASH_FLASHER
+  } >FLASH_BOOTLOADER
 
   /* Used by the startup to initialize data */
   _sidata = LOADADDR(.data);
@@ -152,7 +148,7 @@ SECTIONS
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
 
-  } >RAM AT> FLASH_FLASHER
+  } >RAM AT> FLASH_BOOTLOADER
 
   /* Uninitialized data section into "RAM" Ram type memory */
   . = ALIGN(4);
