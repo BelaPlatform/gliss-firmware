@@ -117,10 +117,11 @@ static inline ssize_t shuffleBits(uint8_t* out, const size_t outSize, const uint
 		{
 			if(in >= inEnd)
 			{
-				ret = -1;
-				break;
+				// if we run out of input bytes, pad with zeros
+				inByte = 0;
+			} else {
+				inByte = *in++;
 			}
-			inByte = *in++;
 			inBits = 0;
 		}
 		uint8_t copyBits = std::min(inMaxBits - inBits, outMaxBits - outBits);
@@ -151,10 +152,10 @@ static inline std::array<uint8_t,kFullBytesPerPayloadUnit> midiToPayload(const u
 	return out;
 }
 
-static inline std::array<uint8_t,kMidiBytesPerPayloadUnit> payloadToMidi(const uint8_t* in)
+static inline std::array<uint8_t,kMidiBytesPerPayloadUnit> payloadToMidi(const uint8_t* in, size_t maxFullBytes)
 {
 	std::array<uint8_t,kMidiBytesPerPayloadUnit> out;
-	ssize_t ret = shuffleBits(out.data(), out.size(), 7, in, kFullBytesPerPayloadUnit, 8);
+	ssize_t ret = shuffleBits(out.data(), out.size(), 7, in, std::min(maxFullBytes, kFullBytesPerPayloadUnit), 8);
 	if(ret < 0)
 	{
 		fprintf(stderr, "ERROR: ran out of input bytes\n\r");

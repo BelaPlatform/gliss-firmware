@@ -290,7 +290,7 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 #endif // GLISS
 		sendAck(buf, len, err);
 	}
-	static uint16_t writePastSeq = 0;
+	static uint8_t writePastSeq = 0;
 	static size_t writeIdx = 0;
 	static uint32_t writeTargetStart = 0;
 	static uint32_t writeTargetStop = 0;
@@ -323,27 +323,33 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 	}
 	if(sysexMsgMatches(buf, len, kFlashWritePayload, 2 + kMidiBytesPerPayloadUnit))
 	{
-		const uint8_t* c = buf + kFlashWritePayload.size();
-		uint16_t seq = midiToUint14(c);
-		c += 2;
 		if(!writeIsGood)
-		{
 			printf("Uninitialised or invalidated write session\n\r");
-		}
+		const uint8_t* c = buf + kFlashWritePayload.size();
+		uint8_t seq = *c;
+		c++;
 		int err = !writeIsGood;
-		if(seq != uint16_t(writePastSeq + 1))
+		if(seq != ((writePastSeq + 1) & 0x7f))
 		{
 			err = 2;
 			writeIsGood = false;
 		} else
 			writePastSeq = seq;
+		uint8_t fullBytes = *c;
+		c++;
 		size_t midiBytes = len - kFlashWritePayload.size() - 2;
-		size_t fullBytes = midiToPayloadBytes(midiBytes);
+		if(fullBytes > midiToPayloadBytes(midiBytes))
+			err = 3;
+		if(fullBytes % sizeof(uint64_t))
+		{
+			printf("payload size %d is not compatible with flash word size\n\r", fullBytes);
+			err = 4;
+		}
 		if(writeIdx + fullBytes + writeTargetStart > writeTargetStop)
 		{
 			printf("Trying to write to write from %p to %p which is beyond %p\n\r",
 				P(writeTargetStart + writeIdx), P(writeTargetStart + writeIdx + fullBytes), P(writeTargetStop));
-			err = 3;
+			err = 5;
 			writeIsGood = false;
 		}
 		if(!err)
@@ -351,12 +357,12 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 			auto payload = midiToPayload(c);
 #ifdef GLISS
 			static_assert(payload.size() % sizeof(uint64_t) == 0, "payload is not compatible with flash word size");
-			if(storageWriteStatic(writeTargetStart + writeIdx, payload.data(), payload.size()))
+			if(storageWriteStatic(writeTargetStart + writeIdx, payload.data(), fullBytes))
 				err = 4;
 #else
 			std::copy(payload.begin(), payload.end(), storage.begin() + (writeTargetStart - 0x08000000) + writeIdx);
 #endif
-			writeIdx += payload.size();
+			writeIdx += fullBytes;
 		}
 		sendAck(buf, len, err);
 	}
@@ -399,7 +405,7 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 				w += kMidiBytesPerPayloadUnit,
 				r += kFullBytesPerPayloadUnit)
 			{
-				auto midi = payloadToMidi(memoryStart + r);
+				auto midi = payloadToMidi(memoryStart + r, kFullBytesPerPayloadUnit);
 				memcpy(data + hdSz + w, midi.data(), midi.size());
 			}
 			sysexSend(data, sizeof(data));
