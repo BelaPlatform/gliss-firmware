@@ -10,7 +10,9 @@
 #define P(ptr) ((void*)(ptr))
 #else
 #include <vector>
-static const char stringId[] = "test-stringId";
+const struct VerificationBlock {
+	char stringId[128] = "test-stringId";
+} kVerificationBlock;
 static std::vector<uint8_t> storage(512 * 1024);
 #include <unistd.h>
 #define P(ptr) ((void*)(unsigned long)(ptr))
@@ -240,6 +242,7 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 	if(sysexMsgMatches(buf, len, kIdentifyQuery, 0))
 	{
 		printf("IDENTIFY\n\r");
+		const char* stringId = kVerificationBlock.stringId;
 		sendAck(buf, len, 0);
 		size_t strl = strlen(stringId) + 1; //copy also the terminating NULL byte
 		uint8_t data[strl + 1 + kIdentifyReply.size()];

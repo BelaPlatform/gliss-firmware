@@ -25,6 +25,7 @@
 #include "usbd_conf.h"
 
 /* USER CODE BEGIN INCLUDE */
+#include "../../../bootloader_stuff/stringId.h"
 
 /* USER CODE END INCLUDE */
 
@@ -67,8 +68,7 @@
 #define USBD_LANGID_STRING     1033
 #define USBD_MANUFACTURER_STRING     "AIL"
 #define USBD_PID     61155
-extern char stringId[128];
-#define USBD_PRODUCT_STRING stringId
+#define USBD_PRODUCT_STRING kVerificationBlock.stringId
 #define USBD_CONFIGURATION_STRING     "MIDI Config"
 #define USBD_INTERFACE_STRING     "MIDI Interface"
 
