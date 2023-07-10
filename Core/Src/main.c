@@ -23,10 +23,9 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "../../bootloader_stuff/retarget.h"
-#include "../../bootloader_stuff/other_section.h"
-#include "../../bootloader_stuff/stringId.h"
-#include "../../bootloader_stuff/midiHandler.h"
+#include "../../common_stuff/retarget.h"
+#include "../../common_stuff/verificationBlock.h"
+#include "../../common_stuff/midiHandler.h"
 #ifndef BOOTLOADER_ONLY
 #include "../../TrillRackApplication/TrillRackApplicationStm32.h"
 #endif // BOOTLOADER_ONLY

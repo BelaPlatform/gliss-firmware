@@ -25,7 +25,7 @@
 #include "usbd_conf.h"
 
 /* USER CODE BEGIN INCLUDE */
-#include "../../../bootloader_stuff/stringId.h"
+#include "../../../common_stuff/verificationBlock.h"
 
 /* USER CODE END INCLUDE */
 

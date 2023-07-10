@@ -1,5 +1,5 @@
 #include "bootloader.h"
-#include "../../bootloader_stuff/stringId.h"
+#include "../../common_stuff/verificationBlock.h"
 #define BOOTLOADER_BKP_REG RTC_BKP_DR0
 
 uint32_t const BL_SYSTEM_BOOTLOADER_START = 0x1FFF0000; // for STM32G4, got this from AN2602 or 2.6.1 of the TRM

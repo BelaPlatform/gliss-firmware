@@ -6,7 +6,7 @@
 #include "bootloader.h"
 #include "storage.h"
 #include "midiHandler.h"
-#include "stringId.h"
+#include "verificationBlock.h"
 #define P(ptr) ((void*)(ptr))
 #else
 #include <vector>
