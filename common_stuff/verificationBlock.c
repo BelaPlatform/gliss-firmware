@@ -7,11 +7,11 @@
 
 
 struct VerificationBlock kVerificationBlock ATTR = {
-#ifdef BOOTLOADER_ONLY
+#ifdef CFG_FLASHER
 	.stringId = "Gliss-flasher",
 #else
 	.stringId = "Gliss-CS",
-#endif // BOOTLOADER_ONLY
+#endif // CFG_FLASHER
 	.gitHashes = "",
 	.reservedBytes = "",
 	.tag = { 0xbe, 0x7a, 0x67, 0x15}, //BELAGLIS

@@ -26,9 +26,9 @@
 #include "../../common_stuff/retarget.h"
 #include "../../common_stuff/verificationBlock.h"
 #include "../../common_stuff/midiHandler.h"
-#ifndef BOOTLOADER_ONLY
+#ifndef CFG_FLASHER
 #include "../../TrillRackApplication/TrillRackApplicationStm32.h"
-#endif // BOOTLOADER_ONLY
+#endif // CFG_FLASHER
 #include "bootloader.h"
 /* USER CODE END Includes */
 
@@ -151,9 +151,9 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_TIM2_Init();
-#ifndef BOOTLOADER_ONLY
+#ifndef CFG_FLASHER
   TrillRackApplication_earlyInit();
-#endif //BOOTLOADER_ONLY
+#endif //CFG_FLASHER
   resetUsbDp();
   /* USER CODE END SysInit */
   /* Initialize all configured peripherals */
@@ -173,11 +173,11 @@ int main(void)
   printf("Booting %s: %s\n\r", bootloaderIsFlasher() ? "flasher" : "application", kVerificationBlock.stringId);
   midiInit();
 
-#ifndef BOOTLOADER_ONLY
+#ifndef CFG_FLASHER
   int ret = TrillRackApplication();
   printf("TrillRackApplication returned %d\n", ret);
   Error_Handler();
-#endif //BOOTLOADER_ONLY
+#endif //CFG_FLASHER
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -185,9 +185,9 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-#ifdef BOOTLOADER_ONLY
+#ifdef CFG_FLASHER
     processMidiMessage();
-#endif // BOOTLOADER_ONLY
+#endif // CFG_FLASHER
     /* USER CODE BEGIN 3 */
   }
 #endif // !CFG_BOOTLOADER
