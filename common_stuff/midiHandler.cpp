@@ -22,7 +22,7 @@ static std::vector<uint8_t> storage(512 * 1024);
 
 static bool verbose = false;
 #ifdef GLISS
-int verifyFlashRangeIsWritable(uint32_t targetStart, uint32_t targetStop)
+int verifyFlashRangeIsWritable(uint32_t targetStart, uint32_t targetStop, bool careAboutBoundaries)
 {
 	int err = 0;
 	BootloaderResetDest_t weAre = bootloaderIsFlasher() ? kBootloaderMagicUserFlasher : kBootloaderMagicUserApplication;
@@ -33,16 +33,16 @@ int verifyFlashRangeIsWritable(uint32_t targetStart, uint32_t targetStop)
 		// verify we are trying to erase valid portions of memory
 		if(bootloaderIsPartOf(target, weAre) || bootloaderIsPartOf(target + kSz, weAre))
 		{
-			printf("cannot erase ourselves");
+			printf("cannot erase ourselves\n\r");
 			err = 3;
 			break;
 		}
-		sector = storageGetSectorFromAddress(target);
+		sector = storageGetSectorFromAddress(target, careAboutBoundaries);
 		if(sector < 0)
 			break;
 	}
 	if(sector > 0)
-		sector = storageGetSectorFromAddress(targetStop);
+		sector = storageGetSectorFromAddress(targetStop, careAboutBoundaries);
 	if(sector < 0)
 	{
 		printf("storageGetSectorFromAddress returned %d\n\r", sector);
@@ -310,7 +310,7 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 		printf("FLASH %s ERASE %p to %p\n\r", force ? "force" : "", P(targetStart), P(targetStop));
 		uint8_t err = 0;
 #ifdef GLISS
-		int writable = verifyFlashRangeIsWritable(targetStart, targetStop);
+		int writable = verifyFlashRangeIsWritable(targetStart, targetStop, true);
 		if(writable && !force)
 			err = writable;
 		if(!err)
@@ -318,7 +318,7 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 			// do erase flash
 			for(uint32_t target = targetStart; target < targetStop; target += storageGetSectorSize())
 			{
-				unsigned int sector = storageGetSectorFromAddress(target); //already validated above
+				unsigned int sector = storageGetSectorFromAddress(target, true); //already validated above
 				err = storageErase(sector);
 				if(err)
 				{
@@ -347,7 +347,7 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 		printf("FLASH %s WRITE %p to %p\n\r", force ? "force" : "", P(writeTargetStart), P(writeTargetStop));
 		uint8_t err = 0;
 #ifdef GLISS
-		int writable = verifyFlashRangeIsWritable(writeTargetStart, writeTargetStop);
+		int writable = verifyFlashRangeIsWritable(writeTargetStart, writeTargetStop, false);
 		if(!writable && !force)
 			err = writable;
 #endif // GLISS

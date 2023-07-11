@@ -83,14 +83,17 @@ int storageErase(uint32_t sector)
 	return 0;
 }
 
-int storageGetSectorFromAddress(uint32_t addr)
+int storageGetSectorFromAddress(uint32_t addr, uint8_t checkForBoundaries)
 {
 	uint32_t ad = (uint32_t)addr;
 	if(addr < kFlashBase)
 		return -1; // outside flash
 	uint32_t offset = (ad - kFlashBase);
-	if(offset % storageGetSectorSize())
-			return -2; // unaligned
+	if(checkForBoundaries)
+	{
+		if(offset % storageGetSectorSize())
+				return -2; // unaligned
+	}
 	int sector = offset / storageGetSectorSize();
 	if(sector > 256) // this is device-specific
 		return -1; // outside flash

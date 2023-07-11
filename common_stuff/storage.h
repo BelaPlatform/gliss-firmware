@@ -63,7 +63,7 @@ int storageErase(uint32_t sector);
  * or -2 if the address is not aligned with a sector boundary
  * "static method"
  */
-int storageGetSectorFromAddress(uint32_t addr);
+int storageGetSectorFromAddress(uint32_t addr, uint8_t checkForBoundaries);
 /**
  * Return the size of a flash sector.
  * "static method"
