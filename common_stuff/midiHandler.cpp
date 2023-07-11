@@ -103,6 +103,43 @@ int sysexSend(const uint8_t* payload, size_t len)
 	return 0;
 }
 
+enum Color {
+	kDark,
+	kGreen,
+	kRed,
+};
+
+#include <main.h>
+static void setColor(Color color){
+#ifdef CFG_FLASHER
+	GPIO_PinState swa;
+	GPIO_PinState swb;
+	switch(color)
+	{
+		default:
+		case kDark:
+			swa = swb = GPIO_PIN_RESET;
+			break;
+		case kGreen:
+			swa = GPIO_PIN_SET;
+			swb = GPIO_PIN_RESET;
+			break;
+		case kRed:
+			swa = GPIO_PIN_RESET;
+			swb = GPIO_PIN_SET;
+			break;
+	}
+	// red
+	HAL_GPIO_WritePin(GPIOB, SW_LED_A_Pin, swa);
+	HAL_GPIO_WritePin(GPIOB, SW_LED_B_Pin, swb);
+#endif // CFG_FLASHER
+}
+class Colorer {
+public:
+	Colorer(Color color ) { setColor(color); }
+	~Colorer() { setColor(kRed); };
+};
+
 uint16_t midiInputCallback(uint8_t *msg, uint16_t length)
 {
 //	for(unsigned int n = 0; n < length; ++n)
@@ -184,6 +221,9 @@ void sendAck(const uint8_t* buf, size_t len, uint8_t ack)
 // we receive the payload of a valid sysex message that's addressed to us
 void deviceProcessSysex(const uint8_t* buf, size_t len)
 {
+#ifdef GLISS
+	Colorer colorer(kGreen);
+#endif // GLISS
 	if(verbose)
 	{
 		printf("payload [%u]:", (unsigned)len);

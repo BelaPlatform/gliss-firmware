@@ -125,6 +125,35 @@ int main(void)
   // NOTE: we jump to bootloader _after_ toggling the USB_DP pin so that if we end up
   // jumping to system bootloader, the host will be able to detect DFU
   resetUsbDp();
+  // borrowed from MX_GPIO_Init() --- start
+  /*Configure GPIO pins : SW_LED_A_Pin SW_LED_B_Pin DEBUG2_Pin DEBUG3_Pin */
+  __HAL_RCC_GPIOB_CLK_ENABLE();
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  GPIO_InitStruct.Pin = SW_LED_A_Pin|SW_LED_B_Pin|DEBUG2_Pin|DEBUG3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  // borrowed from MX_GPIO_Init() --- stop
+  GPIO_PinState swa;
+  GPIO_PinState swb;
+  switch(to)
+  {
+  default:
+  case kBootloaderMagicUserApplication:
+	  // green
+	  swa = GPIO_PIN_SET;
+	  swb = GPIO_PIN_RESET;
+	  break;
+  case kBootloaderMagicSystemBootloader:
+  case kBootloaderMagicUserFlasher:
+	  // red
+	  swa = GPIO_PIN_RESET;
+	  swb = GPIO_PIN_SET;
+	  break;
+  }
+  HAL_GPIO_WritePin(GPIOB, SW_LED_A_Pin, swa);
+  HAL_GPIO_WritePin(GPIOB, SW_LED_B_Pin, swb);
   bootloaderJump(&hrtc, to);
   while(1)
 	  ;
@@ -173,7 +202,11 @@ int main(void)
   printf("Booting %s: %s\n\r", bootloaderIsFlasher() ? "flasher" : "application", kVerificationBlock.stringId);
   midiInit();
 
-#ifndef CFG_FLASHER
+#ifdef CFG_FLASHER
+  // red
+  HAL_GPIO_WritePin(GPIOB, SW_LED_A_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, SW_LED_B_Pin, GPIO_PIN_SET);
+#else //CFG__FLASHER
   int ret = TrillRackApplication();
   printf("TrillRackApplication returned %d\n", ret);
   Error_Handler();
