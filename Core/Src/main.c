@@ -26,6 +26,7 @@
 #include "../../common_stuff/retarget.h"
 #include "../../common_stuff/verificationBlock.h"
 #include "../../common_stuff/midiHandler.h"
+#include "../../common_stuff/pinManager.h"
 #ifndef CFG_FLASHER
 #include "../../TrillRackApplication/TrillRackApplicationStm32.h"
 #endif // CFG_FLASHER
@@ -203,6 +204,8 @@ int main(void)
   midiInit();
 
 #ifdef CFG_FLASHER
+  printf("Making PSoC pins available for debugging\n\r");
+  i2cPinsMode(kI2cPinsModeExternal);
   // red
   HAL_GPIO_WritePin(GPIOB, SW_LED_A_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(GPIOB, SW_LED_B_Pin, GPIO_PIN_SET);
