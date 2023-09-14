@@ -451,5 +451,25 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 			sysexSend(data, sizeof(data));
 		}
 	}
+#ifdef GLISS
+#ifndef CFG_FLASHER
+	if(sysexMsgMatches(buf, len, kPgmChange, 1))
+	{
+		const uint8_t* c = buf + kPgmChange.size();
+		uint8_t newPgm = *c;
+		extern void requestNewMode(int mode);
+		requestNewMode(newPgm);
+		printf("Request new mode %d\n", newPgm);
+	}
+	if(sysexMsgMatches(buf, len, kPgmDebugFlags, 1))
+	{
+		const uint8_t* c = buf + kPgmDebugFlags.size();
+		uint8_t flags = *c;
+		extern void setDebugFlags(uint8_t flags);
+		setDebugFlags(flags);
+		printf("Set debug flags: %#02x\n", flags);
+	}
+#endif // CFG_FLASHER
+#endif // GLISS
 }
 
