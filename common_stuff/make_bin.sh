@@ -15,3 +15,5 @@ cd $p
 cp ../Bootloader/$name .
 dd if=../Flasher/$name of=$name oseek=$bootloader_k iseek=0 bs=1k
 dd if=../Debug/$name of=$name oseek=$((bootloader_k+flasher_k)) iseek=0 bs=1k
+GIT_ARGS="rev-parse --short=10 HEAD"
+echo $(git -C .. $GIT_ARGS)-$(git -C ../TrillRackApplication $GIT_ARGS)-$(git -C ../TrillRackApplication/trill-neopixel $GIT_ARGS)
