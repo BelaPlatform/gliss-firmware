@@ -5,6 +5,11 @@
 #define ATTR __attribute__((section(".stringIdSec"), used))
 #endif
 
+#if __has_include("gitHashes.h")
+#include "gitHashes.h"
+#else
+#define GIT_HASHES ""
+#endif // has-include
 
 struct VerificationBlock kVerificationBlock ATTR = {
 #ifdef CFG_FLASHER
@@ -12,7 +17,7 @@ struct VerificationBlock kVerificationBlock ATTR = {
 #else
 	.stringId = "Gliss-v1.1",
 #endif // CFG_FLASHER
-	.gitHashes = "",
+	.gitHashes = GIT_HASHES,
 	.reservedBytes = "",
 	.tag = { 0xbe, 0x7a, 0x67, 0x15}, //BELAGLIS
 };
