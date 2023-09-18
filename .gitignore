@@ -1,5 +1,11 @@
 .*.sw?
+**.bin
 Debug
 Release
+Flasher
 Bootloader
 bootloader_stuff/hexdumped_*.h
+common_stuff/gitHashes.h
+.gdb_history
+Drivers/**/*.txt
+Drivers/**/*.md
