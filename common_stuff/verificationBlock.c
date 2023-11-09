@@ -13,9 +13,9 @@
 
 struct VerificationBlock kVerificationBlock ATTR = {
 #ifdef CFG_FLASHER
-	.stringId = "Gliss-flasher-v1.1",
+	.stringId = "Gliss-flasher-v1.2",
 #else
-	.stringId = "Gliss-v1.1",
+	.stringId = "Gliss-v1.2",
 #endif // CFG_FLASHER
 	.gitHashes = GIT_HASHES,
 	.reservedBytes = "",
