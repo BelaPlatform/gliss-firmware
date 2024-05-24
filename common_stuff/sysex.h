@@ -15,7 +15,7 @@ enum {
 };
 
 constexpr uint8_t kByteSystem = 5;
-constexpr uint8_t kBytePgm = 6;
+constexpr uint8_t kByteProtocol = 6;
 constexpr uint8_t kByteAck = 100;
 constexpr uint8_t kByteBootloader = 127;
 constexpr uint8_t kNumAckedBytes = 2;
@@ -30,8 +30,7 @@ constexpr std::array<uint8_t,2> kMemoryReadQuery = {kByteBootloader, 123};
 constexpr std::array<uint8_t,2> kMemoryReadReply = {kByteBootloader, 122};
 constexpr std::array<uint8_t,2> kTestQuery = {kByteBootloader, 121};
 constexpr std::array<uint8_t,2> kTestReply = {kByteBootloader, 120};
-constexpr std::array<uint8_t,2> kPgmChange = {kBytePgm, 0};
-constexpr std::array<uint8_t,2> kPgmDebugFlags = {kBytePgm, 1};
+constexpr std::array<uint8_t,1> kProtocol = {kByteProtocol};
 constexpr size_t kFullBytesPerPayloadUnit = 56;
 constexpr size_t kMidiBytesPerPayloadUnit = kFullBytesPerPayloadUnit / 7 * 8;
 

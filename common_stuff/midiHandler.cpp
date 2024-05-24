@@ -7,6 +7,7 @@
 #include "storage.h"
 #include "midiHandler.h"
 #include "verificationBlock.h"
+#include "../TrillRackApplication/trill-neopixel/GlissProtocol.h"
 #define P(ptr) ((void*)(ptr))
 #else
 #include <vector>
@@ -453,21 +454,10 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 	}
 #ifdef GLISS
 #ifndef CFG_FLASHER
-	if(sysexMsgMatches(buf, len, kPgmChange, 1))
+	if(sysexMsgMatches(buf, len, kProtocol, 1, false))
 	{
-		const uint8_t* c = buf + kPgmChange.size();
-		uint8_t newPgm = *c;
-		extern void requestNewMode(int mode);
-		requestNewMode(newPgm);
-		printf("Request new mode %d\n", newPgm);
-	}
-	if(sysexMsgMatches(buf, len, kPgmDebugFlags, 1))
-	{
-		const uint8_t* c = buf + kPgmDebugFlags.size();
-		uint8_t flags = *c;
-		extern void setDebugFlags(uint8_t flags);
-		setDebugFlags(flags);
-		printf("Set debug flags: %#02x\n", flags);
+		size_t consumed = kProtocol.size();
+		gp_incoming(kGpMidi, buf + consumed,len - consumed);
 	}
 #endif // CFG_FLASHER
 #endif // GLISS
