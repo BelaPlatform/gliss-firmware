@@ -67,8 +67,6 @@ void Error_Handler(void);
 #define PSOC_PULLUP_SDA_GPIO_Port GPIOA
 #define ADC_DIG_IN_Pin GPIO_PIN_0
 #define ADC_DIG_IN_GPIO_Port GPIOB
-#define DEBUG0_Pin GPIO_PIN_15
-#define DEBUG0_GPIO_Port GPIOA
 #define PSOC_EVENT_Pin GPIO_PIN_3
 #define PSOC_EVENT_GPIO_Port GPIOB
 #define PSOC_EVENT_EXTI_IRQn EXTI3_IRQn
@@ -78,8 +76,6 @@ void Error_Handler(void);
 #define SW_LED_A_GPIO_Port GPIOB
 #define SW_LED_B_Pin GPIO_PIN_6
 #define SW_LED_B_GPIO_Port GPIOB
-#define DEBUG2_Pin GPIO_PIN_7
-#define DEBUG2_GPIO_Port GPIOB
 #define DEBUG3_Pin GPIO_PIN_8
 #define DEBUG3_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
