@@ -206,6 +206,9 @@ int main(void)
   printf("Booting %s: %s\n\r", bootloaderIsFlasher() ? "flasher" : "application", kVerificationBlock.stringId);
   midiInit();
 
+  if (HAL_I2C_EnableListen_IT(&hi2c1) != HAL_OK)
+    printf("error enabling external I2C\n\r");
+
 #ifdef CFG_FLASHER
   printf("Making PSoC pins available for debugging\n\r");
   i2cPinsMode(kI2cPinsModeExternal);
