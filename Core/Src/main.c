@@ -129,10 +129,10 @@ int main(void)
   // jumping to system bootloader, the host will be able to detect DFU
   resetUsbDp();
   // borrowed from MX_GPIO_Init() --- start
-  /*Configure GPIO pins : SW_LED_A_Pin SW_LED_B_Pin DEBUG2_Pin DEBUG3_Pin */
+  /*Configure GPIO pins : SW_LED_A_Pin SW_LED_B_Pin DEBUG3_Pin */
   __HAL_RCC_GPIOB_CLK_ENABLE();
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-  GPIO_InitStruct.Pin = SW_LED_A_Pin|SW_LED_B_Pin|DEBUG2_Pin|DEBUG3_Pin;
+  GPIO_InitStruct.Pin = SW_LED_A_Pin|SW_LED_B_Pin|DEBUG3_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
