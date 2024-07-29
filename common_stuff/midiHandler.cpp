@@ -1,6 +1,9 @@
 #ifdef USE_HAL_DRIVER
 #define GLISS
 #endif
+
+#include <stdint.h>
+
 #ifdef GLISS
 #include "usbd_midi_if.h"
 #include "bootloader.h"

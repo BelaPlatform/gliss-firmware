@@ -1,4 +1,9 @@
 #include <stdint.h>
+#include <string.h>
+#ifdef __linux__
+#include <sys/types.h>
+#endif // __linux__
+#include <stdio.h>
 #include <array>
 
 constexpr uint8_t kEox = 247;
