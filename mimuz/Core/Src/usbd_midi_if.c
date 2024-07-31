@@ -17,7 +17,8 @@
 static uint16_t MIDI_DataRx(uint8_t *msg, uint16_t length);
 static uint16_t MIDI_DataTx(uint8_t *msg, uint16_t length);
 
-ring_buffer* rxq;
+static ring_buffer rxq;
+static char rxqraw[1024];
 
 void (*cbNoteOff)(uint8_t ch, uint8_t note, uint8_t vel);
 void (*cbNoteOn)(uint8_t ch, uint8_t note, uint8_t vel);
@@ -34,7 +35,7 @@ USBD_MIDI_ItfTypeDef USBD_Interface_fops_FS =
 
 static uint16_t MIDI_DataRx(uint8_t *msg, uint16_t length){
   if((length & 3) == 0)
-    rb_write_to_buffer(rxq, 1, msg, length);
+    rb_write_to_buffer(&rxq, 1, msg, length);
   return 0;
 }
 
@@ -76,8 +77,8 @@ static int checkMidiMessage(uint8_t *pMidi){
 static uint8_t buffer[4];
 
 void mimuz_init(void){
-  if(!rxq)
-    rxq = rb_create(1024);
+  if(!rxq.size)
+    rb_init_preallocated(&rxq, rxqraw, sizeof(rxqraw));
 }
 
 void setHdlAll(uint16_t (*fptr)(uint8_t *msg, uint16_t length))
@@ -129,9 +130,9 @@ void processMidiMessage(){
   uint8_t pbuf[4];
   uint8_t kindmessage;
   // Rx
-  int available = rb_available_to_read(rxq);
+  int available = rb_available_to_read(&rxq);
   if(available > 0){
-    int ret = rb_read_from_buffer(rxq, (char*)pbuf, sizeof(pbuf));
+    int ret = rb_read_from_buffer(&rxq, (char*)pbuf, sizeof(pbuf));
     if(!ret)
     {
     kindmessage = checkMidiMessage(pbuf);
