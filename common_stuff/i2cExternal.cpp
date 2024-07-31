@@ -15,7 +15,9 @@ static void processData()
 //	for(size_t n = 0; n < rxCount; ++n)
 //		printf("%d ", rxData[n]);
 //	printf("\n\r");
+#if !defined(CFG_DEBUG) && !defined(CFG_FLASHER)
 	gp_incoming(kGpI2c, rxData, rxCount);
+#endif
 }
 
 void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c)
