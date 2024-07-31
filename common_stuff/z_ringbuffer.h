@@ -63,4 +63,5 @@ int rb_read_from_buffer(ring_buffer *buffer, char *dest, int len);
 /// this is safe to call from any thread
 void rb_clear_buffer(ring_buffer *buffer);
 
+int rb_find(ring_buffer *rb, int maxLen, const char needle);
 #endif

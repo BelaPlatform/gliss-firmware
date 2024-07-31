@@ -166,3 +166,27 @@ void rb_clear_buffer(ring_buffer *buffer) {
   SYNC_COMPARE_AND_SWAP(&(buffer->write_idx), buffer->write_idx, 0);
   }
 }
+
+int rb_find(ring_buffer *rb, int maxLen, const char needle)
+{
+  if (!rb || maxLen < 0 ) return -2;
+  if (maxLen == 0) return -1;
+  int available = rb_available_to_read(rb);
+  if(0 == available)
+    return -1;
+  // note that rb_available_to_read also serves as a memory barrier, and so any
+  // writes to buffer->buf_ptr that precede the update of buffer->write_idx are
+  // visible to us now
+  int n = rb->read_idx;
+  for(int count = 0; count < maxLen && count < available; ++count)
+  {
+    if(needle == rb->buf_ptr[n])
+      return count;
+    ++n;
+    if(n == rb->write_idx)
+      break;
+    if(n >= rb->size)
+      n = 0;
+  }
+  return -1;
+}
