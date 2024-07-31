@@ -37,6 +37,13 @@
   #endif
 #endif
 
+static void rb_init(ring_buffer* buffer, int size)
+{
+  buffer->size = size;
+  buffer->write_idx = 0;
+  buffer->read_idx = 0;
+}
+
 ring_buffer *rb_create(int size) {
   if (size & 0xff) return NULL;  // size must be a multiple of 256
   ring_buffer *buffer = malloc(sizeof(ring_buffer));
@@ -46,10 +53,17 @@ ring_buffer *rb_create(int size) {
     free(buffer);
     return NULL;
   }
-  buffer->size = size;
-  buffer->write_idx = 0;
-  buffer->read_idx = 0;
+  rb_init(buffer, size);
   return buffer;
+}
+
+int rb_init_preallocated(ring_buffer* buffer, char* buf_ptr, int size) {
+  if(!buffer || !buf_ptr)
+    return -1;
+  if (size & 0xff) return -1; // size must be a multiple of 256
+  buffer->buf_ptr = buf_ptr;
+  rb_init(buffer, size);
+  return 0;
 }
 
 void rb_free(ring_buffer *buffer) {

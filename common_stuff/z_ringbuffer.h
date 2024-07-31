@@ -24,6 +24,11 @@ typedef struct ring_buffer {
 /// returns NULL on failure
 ring_buffer *rb_create(int size);
 
+/// initialise a ring_buffer with pre-allocated rb and buf_ptr
+/// size must be a multiple of 256
+/// returns 0 on success
+int rb_init_preallocated(ring_buffer* rb, char* buf_ptr, int size);
+
 /// free a ring buffer
 void rb_free(ring_buffer *buffer);
 
