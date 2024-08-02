@@ -33,9 +33,15 @@ USBD_MIDI_ItfTypeDef USBD_Interface_fops_FS =
   MIDI_DataTx
 };
 
+static int available = 0;
 static uint16_t MIDI_DataRx(uint8_t *msg, uint16_t length){
   if((length & 3) == 0)
-    rb_write_to_buffer(&rxq, 1, msg, length);
+  {
+    if(available < length)
+      available = rb_available_to_write(&rxq);
+    if(available >= length)
+      rb_write_to_buffer(&rxq, -1, msg, length);
+  }
   return 0;
 }
 
