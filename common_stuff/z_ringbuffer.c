@@ -97,7 +97,16 @@ int rb_available_to_read(ring_buffer *buffer) {
 int rb_write_to_buffer(ring_buffer *buffer, int n, ...) {
   if (!buffer) return -1;
   int write_idx = buffer->write_idx;  // no need for sync in writer thread
-  int available = rb_available_to_write(buffer);
+  int available;
+  if(n < 0)
+  {
+	// assume the caller knows what they are doing and wants to avoid the
+	// overhead of an extra memory barrier
+    n = -n;
+	available = buffer->size;
+  } else {
+    available = rb_available_to_write(buffer);
+  }
   va_list args;
   va_start(args, n);
   int i;
