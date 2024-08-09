@@ -404,7 +404,7 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 			if(storageWriteStatic(writeTargetStart + writeIdx, payload.data(), fullBytes))
 				err = 4;
 #else
-			std::copy(payload.begin(), payload.end(), storage.begin() + (writeTargetStart - 0x08000000) + writeIdx);
+			std::copy(payload.begin(), payload.begin() + fullBytes, storage.begin() + (writeTargetStart - 0x08000000) + writeIdx);
 #endif
 			writeIdx += fullBytes;
 		}
