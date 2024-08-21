@@ -2,21 +2,45 @@
 #include <stdio.h>
 #include "../TrillRackApplication/trill-neopixel/GlissProtocol.h"
 #include <TrillRackApplication_bsp.h>
-
+#include <string.h>
 // see https://controllerstech.com/stm32-as-i2c-slave-part-3/
 
 constexpr size_t kRxSize = 100;
 static uint8_t rxData[kRxSize];
+static uint8_t txData[kRxSize];
 static uint8_t rxCount = 0;
 
 static void processData()
 {
+	if(!rxCount)
+		return;
 //	printf("Received %d bytes: ", rxCount);
 //	for(size_t n = 0; n < rxCount; ++n)
 //		printf("%d ", rxData[n]);
 //	printf("\n\r");
+	// placeholder while we craft a response
+	memset(txData, 0x55, sizeof(txData));
+	txData[0] = 0x12;
+	txData[1] = 0x34;
+	uint8_t checksum = 0;
+	for(ssize_t n = 0; n < rxCount - 1; ++n)
+	{
+		checksum += rxData[n];
+	}
+	if(checksum != rxData[rxCount - 1])
+	{
+		printf("co\n\r");
+		return;
+	}
 #if !defined(CFG_DEBUG) && !defined(CFG_FLASHER)
-	gp_incoming(kGpI2c, rxData, rxCount);
+	if(rxCount > 0)
+	{
+		--rxCount; // remove checksum
+		if(6 == rxData[0])
+		{
+			gp_incoming(kGpI2c, rxData + 1, rxCount - 1);
+		}
+	}
 #endif
 }
 
@@ -34,7 +58,7 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, ui
 		HAL_I2C_Slave_Sequential_Receive_IT(hi2c, rxData + rxCount, 1, I2C_FIRST_FRAME);
 	} else { // if the master requests the data from the slave
 		// dummy response, which is enough for now to have i2cdetect return success
-		HAL_I2C_Slave_Seq_Transmit_IT(hi2c, rxData, 1, I2C_FIRST_FRAME);
+		HAL_I2C_Slave_Seq_Transmit_IT(hi2c, txData, sizeof(txData), I2C_FIRST_FRAME);
 	}
 }
 
