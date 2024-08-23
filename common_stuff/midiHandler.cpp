@@ -249,7 +249,7 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 	if(sysexMsgMatches(buf, len, kJumpToBootloader, 1))
 	{
 		uint8_t byte = buf[sizeof(kJumpToBootloader)];
-		printf("JUMP TO BOOTLOADER %d\n\r", byte);
+		printf("JUMP TO BOOTLOADER %d with APP_Rx_ptr_out: %lu\n\r", byte, APP_Rx_ptr_out);
 		int ret = 0;
 #ifdef GLISS
 		BootloaderResetDest_t dest;
@@ -272,13 +272,29 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 		}
 		if(ret)
 			printf("Invalid jumping destination\n\r");
+		printf("Jumping to dest %#x, ret: %d\n\r", dest, ret);
 #endif // GLISS
 		sendAck(buf, len, ret);
 #ifdef GLISS
 		// ensure the host has time to read the ack before we reboot
 		void USBD_MIDI_SendPacket();
-		USBD_MIDI_SendPacket();
-		HAL_Delay(50);
+		// Two issues at play:
+		// 1. More than one calls to USB_MIDI_SendPacket()
+		// may be required for the whole content of the circular buffer to be
+		// made available to the host. This is because only sections of contiguous
+		// memory from the circular buffer can be passed to the low-level HAL USB functions
+		// So, if the circular buffer is currnetly wrapped around, two subsequent calls
+		// are needed. Possibly (I didn't investigate) a wait is necessary between the two
+		// 2. We need to make sure that the host has enough time to read the data before
+		// the device reboots. We have witnessed Windows machines where a 50 ms wait was
+		// not enough and the host was missing the response.
+		//
+		// So, we wait about 500ms, calling USB_MIDI_SendPacket() several times for good measure.
+		for(size_t n = 0; n < 50; ++n)
+		{
+			USBD_MIDI_SendPacket();
+			HAL_Delay(10);
+		}
 		if(!ret)
 			bootloaderResetTo(dest);
 #endif // GLISS
