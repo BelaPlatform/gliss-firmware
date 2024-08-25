@@ -205,7 +205,10 @@ int main(void)
   MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
   RetargetInit(&huart2);
+  // Sending bell character, in case we are looking at screen and want a notification on boot
+  printf("\a\a\a\a");
   printf("Booting %s: %s\n\r", bootloaderIsFlasher() ? "flasher" : "application", kVerificationBlock.stringId);
+  printf("%s\n\r", kVerificationBlock.gitHashes);
   midiInit();
 
   if (HAL_I2C_EnableListen_IT(&hi2c1) != HAL_OK)
