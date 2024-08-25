@@ -8,7 +8,7 @@
     <stringAttribute key="com.st.stm32cube.ide.mcu.debug.launch.ip_address_local" value="localhost"/>
     <booleanAttribute key="com.st.stm32cube.ide.mcu.debug.launch.limit_swo_clock.enabled" value="false"/>
     <stringAttribute key="com.st.stm32cube.ide.mcu.debug.launch.limit_swo_clock.value" value=""/>
-    <stringAttribute key="com.st.stm32cube.ide.mcu.debug.launch.loadList" value="{&quot;fItems&quot;:[{&quot;fIsFromMainTab&quot;:false,&quot;fPath&quot;:&quot;Flasher/G491KE-TrillRack.elf&quot;,&quot;fProjectName&quot;:&quot;G491KE-TrillRack&quot;,&quot;fBuildConfigId&quot;:&quot;com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.debug.1775016464.1369587910&quot;,&quot;fPerformBuild&quot;:true,&quot;fDownload&quot;:false,&quot;fLoadSymbols&quot;:true},{&quot;fIsFromMainTab&quot;:false,&quot;fPath&quot;:&quot;Debug/G491KE-TrillRack.elf&quot;,&quot;fProjectName&quot;:&quot;G491KE-TrillRack&quot;,&quot;fBuildConfigId&quot;:&quot;com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.debug.1775016464&quot;,&quot;fPerformBuild&quot;:true,&quot;fDownload&quot;:false,&quot;fLoadSymbols&quot;:true},{&quot;fIsFromMainTab&quot;:true,&quot;fPath&quot;:&quot;Bootloader/G491KE-TrillRack.elf&quot;,&quot;fProjectName&quot;:&quot;G491KE-TrillRack&quot;,&quot;fPerformBuild&quot;:true,&quot;fDownload&quot;:false,&quot;fLoadSymbols&quot;:true}]}"/>
+    <stringAttribute key="com.st.stm32cube.ide.mcu.debug.launch.loadList" value="{&quot;fItems&quot;:[{&quot;fIsFromMainTab&quot;:false,&quot;fPath&quot;:&quot;Flasher/G491KE-TrillRack.elf&quot;,&quot;fProjectName&quot;:&quot;G491KE-TrillRack&quot;,&quot;fBuildConfigId&quot;:&quot;com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.debug.1775016464.1369587910&quot;,&quot;fPerformBuild&quot;:false,&quot;fDownload&quot;:false,&quot;fLoadSymbols&quot;:true},{&quot;fIsFromMainTab&quot;:false,&quot;fPath&quot;:&quot;Debug/G491KE-TrillRack.elf&quot;,&quot;fProjectName&quot;:&quot;G491KE-TrillRack&quot;,&quot;fBuildConfigId&quot;:&quot;com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.debug.1775016464&quot;,&quot;fPerformBuild&quot;:false,&quot;fDownload&quot;:false,&quot;fLoadSymbols&quot;:true},{&quot;fIsFromMainTab&quot;:true,&quot;fPath&quot;:&quot;Debug/G491KE-TrillRack.elf&quot;,&quot;fProjectName&quot;:&quot;G491KE-TrillRack&quot;,&quot;fPerformBuild&quot;:true,&quot;fDownload&quot;:false,&quot;fLoadSymbols&quot;:true}]}"/>
     <stringAttribute key="com.st.stm32cube.ide.mcu.debug.launch.override_start_address_mode" value="default"/>
     <stringAttribute key="com.st.stm32cube.ide.mcu.debug.launch.remoteCommand" value="target remote"/>
     <booleanAttribute key="com.st.stm32cube.ide.mcu.debug.launch.startServer" value="true"/>
@@ -63,10 +63,10 @@
     <stringAttribute key="org.eclipse.cdt.launch.DEBUGGER_START_MODE" value="remote"/>
     <booleanAttribute key="org.eclipse.cdt.launch.DEBUGGER_STOP_AT_MAIN" value="false"/>
     <stringAttribute key="org.eclipse.cdt.launch.DEBUGGER_STOP_AT_MAIN_SYMBOL" value="main"/>
-    <stringAttribute key="org.eclipse.cdt.launch.PROGRAM_NAME" value="Bootloader/G491KE-TrillRack.elf"/>
+    <stringAttribute key="org.eclipse.cdt.launch.PROGRAM_NAME" value="Debug/G491KE-TrillRack.elf"/>
     <stringAttribute key="org.eclipse.cdt.launch.PROJECT_ATTR" value="G491KE-TrillRack"/>
     <booleanAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_AUTO_ATTR" value="false"/>
-    <stringAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_ID_ATTR" value="com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.debug.1775016464.375366264"/>
+    <stringAttribute key="org.eclipse.cdt.launch.PROJECT_BUILD_CONFIG_ID_ATTR" value="com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.debug.1775016464"/>
     <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
         <listEntry value="/G491KE-TrillRack"/>
     </listAttribute>
