@@ -55,11 +55,7 @@ int verifyFlashRangeIsWritable(uint32_t targetStart, uint32_t targetStop, bool c
 	return err;
 }
 
-
-static uint8_t sysexIdx = 0;
-static std::array<uint8_t,266 + kExtraBytes> sysexIn;
-
-int sysexSend(const uint8_t* payload, size_t len)
+static int sysexSendUsb(const uint8_t* payload, size_t len)
 {
 	uint8_t msg[4];
 	size_t i = 0;
@@ -107,6 +103,15 @@ int sysexSend(const uint8_t* payload, size_t len)
 	return 0;
 }
 
+int sysexSend(SysexPeripheral sp, const uint8_t* payload, size_t len)
+{
+	if(kSysexUsb == sp)
+		return sysexSendUsb(payload, len);
+	if(kSysexI2c == sp)
+		; // TODO
+	return 0;
+}
+
 enum Color {
 	kDark,
 	kGreen,
@@ -144,8 +149,10 @@ public:
 	~Colorer() { setColor(kRed); };
 };
 
-uint16_t midiInputCallback(uint8_t *msg, uint16_t length)
+uint16_t usbMidiInputCallback(uint8_t *msg, uint16_t length)
 {
+	static uint8_t sysexIdx = 0;
+	static std::array<uint8_t,266 + kExtraBytes> sysexIn;
 //	for(unsigned int n = 0; n < length; ++n)
 //		printf("%02x ", msg[n]);
 //	if(length)
@@ -201,15 +208,17 @@ uint16_t midiInputCallback(uint8_t *msg, uint16_t length)
 		printf("Not our sysex\n\r");
 		return 1;
 	}
-	deviceProcessSysex(data + kOffset, size - kExtraBytes);
+	midiHandleIncoming(kSysexUsb, data + kOffset, size - kExtraBytes);
 	return 0;
 }
 void midiInit()
 {
-	setHdlAll(midiInputCallback);
+	setHdlAll(usbMidiInputCallback);
 }
 #endif // GLISS
 
+class MidiHandler {
+private:
 void sendAck(const uint8_t* buf, size_t len, uint8_t ack)
 {
 	std::array<uint8_t,kNumAckedBytes + 2> data {};
@@ -222,8 +231,21 @@ void sendAck(const uint8_t* buf, size_t len, uint8_t ack)
 	data[i++] = ack;
 	sysexSend(data.data(), data.size());
 }
+SysexPeripheral sp;
+
+public:
+MidiHandler(SysexPeripheral sp) : sp(sp) {}
+
+void sysexSend(const uint8_t* data, size_t size)
+{
+	::sysexSend(sp, data, size);
+}
+template <typename T>
+static int sysexSend(const T& content) {
+	return sysexSend(content.data(), content.size());
+}
 // we receive the payload of a valid sysex message that's addressed to us
-void deviceProcessSysex(const uint8_t* buf, size_t len)
+void handleSysex(const uint8_t* buf, size_t len)
 {
 #ifdef GLISS
 	Colorer colorer(kGreen);
@@ -350,11 +372,6 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 #endif // GLISS
 		sendAck(buf, len, err);
 	}
-	static uint8_t writePastSeq = 0;
-	static size_t writeIdx = 0;
-	static uint32_t writeTargetStart = 0;
-	static uint32_t writeTargetStop = 0;
-	static bool writeIsGood = false;
 	if(sysexMsgMatches(buf, len, kFlashWrite, 9))
 	{
 		const uint8_t* c = buf + kFlashWrite.size();
@@ -476,9 +493,21 @@ void deviceProcessSysex(const uint8_t* buf, size_t len)
 	if(sysexMsgMatches(buf, len, kProtocol, 1, false))
 	{
 		size_t consumed = kProtocol.size();
-		gp_incoming(kGpMidi, buf + consumed,len - consumed);
+		gp_incoming(sp, buf + consumed,len - consumed);
 	}
 #endif // CFG_FLASHER
 #endif // GLISS
 }
+private:
+uint8_t writePastSeq = 0;
+size_t writeIdx = 0;
+uint32_t writeTargetStart = 0;
+uint32_t writeTargetStop = 0;
+bool writeIsGood = false;
+}; // class MidiHandler
 
+void midiHandleIncoming(SysexPeripheral sp, const uint8_t* buf, size_t len)
+{
+	static std::array<MidiHandler,kSysexNumSp> midiHandlers = {{kSysexUsb, kSysexI2c}};
+	midiHandlers[sp].handleSysex(buf, len);
+}

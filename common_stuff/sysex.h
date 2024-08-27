@@ -1,3 +1,5 @@
+#pragma once
+
 #include <stdint.h>
 #include <string.h>
 #ifdef __linux__
@@ -5,6 +7,14 @@
 #endif // __linux__
 #include <stdio.h>
 #include <array>
+
+enum SysexPeripheral {
+	kSysexUsb,
+	kSysexI2c,
+	kSysexNumSp,
+};
+
+void midiHandleIncoming(SysexPeripheral sp, const uint8_t* buf, size_t len);
 
 constexpr uint8_t kEox = 247;
 constexpr uint8_t kSox = 240;
@@ -198,9 +208,5 @@ static inline uint32_t midiToUint28(const uint8_t* data)
 	return midiToUint14(data) | (midiToUint14(data + 2) << 14);
 }
 
-void deviceProcessSysex(const uint8_t* sysexIn, size_t sysexSize);
-int sysexSend(const uint8_t* payload, size_t len);
-template <typename T>
-static int sysexSend(const T& content) {
-	return sysexSend(content.data(), content.size());
-}
+void deviceProcessSysex(SysexPeripheral sp, const uint8_t* sysexIn, size_t sysexSize);
+int sysexSend(SysexPeripheral sp, const uint8_t* payload, size_t len);
