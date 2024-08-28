@@ -26,6 +26,7 @@
 #include "../../common_stuff/retarget.h"
 #include "../../common_stuff/verificationBlock.h"
 #include "../../common_stuff/midiHandler.h"
+#include "../../common_stuff/i2cExternal.h"
 #include "../../common_stuff/pinManager.h"
 #ifndef CFG_FLASHER
 #include "../../TrillRackApplication/TrillRackApplicationStm32.h"
@@ -211,9 +212,7 @@ int main(void)
   printf("%s\n\r", kVerificationBlock.gitHashes);
   midiInit();
 
-  if (HAL_I2C_EnableListen_IT(&hi2c1) != HAL_OK)
-    printf("error enabling external I2C\n\r");
-
+  i2cMidiInit();
 #ifdef CFG_FLASHER
   printf("Making PSoC pins available for debugging\n\r");
   i2cPinsMode(kI2cPinsModeExternal);
@@ -233,6 +232,7 @@ int main(void)
   {
 #ifdef CFG_FLASHER
     processMidiMessage();
+    i2cProcessIncomingFromMainThread();
 #endif // CFG_FLASHER
     /* USER CODE END WHILE */
 

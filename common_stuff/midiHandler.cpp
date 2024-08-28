@@ -22,6 +22,7 @@ static std::vector<uint8_t> storage(512 * 1024);
 #define P(ptr) ((void*)(unsigned long)(ptr))
 #endif // GLISS
 #include <algorithm>
+#include "i2cExternal.h"
 #include "sysex.h"
 
 static bool verbose = false;
@@ -108,7 +109,7 @@ int sysexSend(SysexPeripheral sp, const uint8_t* payload, size_t len)
 	if(kSysexUsb == sp)
 		return sysexSendUsb(payload, len);
 	if(kSysexI2c == sp)
-		; // TODO
+		return sysexSendI2c(payload, len);
 	return 0;
 }
 

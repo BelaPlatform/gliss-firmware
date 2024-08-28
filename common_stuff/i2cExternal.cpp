@@ -3,15 +3,42 @@
 #include "../TrillRackApplication/trill-neopixel/GlissProtocol.h"
 #include <TrillRackApplication_bsp.h>
 #include <string.h>
+#include "sysex.h"
+extern "C" {
+#include "z_ringbuffer.h"
+}
+#include "i2cExternal.h"
 
-constexpr size_t kRxSize = 100;
+constexpr size_t kRxSize = 257;
 static uint8_t rxData[kRxSize];
 static uint8_t txData[kRxSize];
 static uint8_t rxCount = 0;
 static uint8_t txCount = 0;
 static uint8_t dir;
+static ring_buffer i2cRxQ;
+static ring_buffer i2cTxQ;
+#undef VERBOSE
 
-static void processData(I2C_HandleTypeDef* hi2c)
+int i2cMidiInit()
+{
+	static char rxRbBuf[256];
+	static char txRbBuf[256];
+	rb_init_preallocated(&i2cRxQ, rxRbBuf, sizeof(rxRbBuf));
+	rb_init_preallocated(&i2cTxQ, txRbBuf, sizeof(txRbBuf));
+	if (HAL_I2C_EnableListen_IT(&externalHi2c) != HAL_OK)
+		printf("error enabling external I2C\n\r");
+	return 0;
+}
+
+static int computeChecksum(uint8_t* data, size_t count)
+{
+	uint8_t checksum = 0;
+	for(ssize_t n = 0; n < rxCount - 1; ++n)
+		checksum += data[n];
+	return checksum;
+}
+
+static void i2cMidiDataRx(I2C_HandleTypeDef* hi2c)
 {
 	if(!rxCount)
 		return;
@@ -20,31 +47,74 @@ static void processData(I2C_HandleTypeDef* hi2c)
 //		printf("%d ", rxData[n]);
 //	printf("\n\r");
 	// placeholder while we craft a response
-	memset(txData, 0x55, sizeof(txData));
-	txData[0] = 0x12;
-	txData[1] = 0x34;
-	uint8_t checksum = 0;
-	for(ssize_t n = 0; n < rxCount - 1; ++n)
-	{
-		checksum += rxData[n];
-	}
+	txData[0] = 0;
+	uint8_t checksum = computeChecksum(rxData, rxCount);
 	if(checksum != rxData[rxCount - 1])
 	{
-		printf("co\n\r");
+		printf("chk\n\r"); // bad checksum
+		txData[0] = 0; // TODO: transmit error code
 		return;
 	}
-#if !defined(CFG_DEBUG) && !defined(CFG_FLASHER)
-	if(rxCount > 0)
+	--rxCount; // remove checksum
+	int ret = rb_available_to_write(&i2cRxQ);
+	if(ret < rxCount)
 	{
-		--rxCount; // remove checksum
-		if(6 == rxData[0])
-		{
-			gp_incoming(kGpI2c, rxData + 1, rxCount - 1);
-		}
+		printf("space\n\r"); // not enough space
+		txData[0] = 0; // TODO: transmit error code
+		return;
 	}
-#endif
+	rb_write_to_buffer(&i2cRxQ, 2, &rxCount, sizeof(rxCount), (const char*)rxData, rxCount);
 }
 
+int sysexSendI2c(const uint8_t* payload, size_t len)
+{
+	int ret = rb_available_to_write(&i2cTxQ);
+	if(int(len) > ret || len > 255)
+	{
+		printf("Can't fit this message\n\r");
+		return -1;
+	}
+	char charLen = len;
+#ifdef VERBOSE
+	printf("Writ %d\n\r", len);
+#endif // VERBOSE
+	ret = rb_write_to_buffer(&i2cTxQ, 2, &charLen, sizeof(charLen), (const char*)payload, len);
+	if(ret)
+	{
+		printf("Error writing message\n\r");
+		return -1;
+	}
+	return 0;
+}
+
+void i2cProcessIncomingFromMainThread()
+{
+	size_t available = rb_available_to_read(&i2cRxQ);
+	if(available > 0)
+	{
+		uint8_t count;
+		int ret = rb_read_from_buffer(&i2cRxQ, (char*)&count, sizeof(count));
+		if(ret < 0)
+		{
+			printf("error bytes not ready when getting them\n\r");
+			return;
+		}
+		--available;
+		if(available < count)
+		{
+			printf("Not enough data in the buffer\n\r");
+			return;
+		}
+		uint8_t data[count];
+		ret = rb_read_from_buffer(&i2cRxQ, (char*)data, sizeof(data));
+		if(ret < 0)
+		{
+			printf("error %d bytes not ready when getting them: %d\n\r", sizeof(data), ret);
+			return;
+		}
+		midiHandleIncoming(kSysexI2c, data, count);
+	}
+}
 // Slave DMA I2C is complicated.
 // We start by calling HAL_I2C_EnableListen_IT() at initialisation time to listen
 // for the address match event.
@@ -71,33 +141,89 @@ static void processData(I2C_HandleTypeDef* hi2c)
 
 void HAL_I2C_ListenCpltCallback(I2C_HandleTypeDef *hi2c)
 {
-	int ret = HAL_I2C_EnableListen_IT(hi2c);
+	HAL_I2C_EnableListen_IT(hi2c);
 }
 
 void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, uint16_t AddrMatchCode)
 {
+#ifdef VERBOSE
+	printf("adr");
+#endif // VERBOSE
 	dir = TransferDirection;
 	HAL_I2C_DisableListen_IT(hi2c);
 	if (TransferDirection == I2C_DIRECTION_TRANSMIT) // if the master wants to transmit the data
 	{
 		HAL_I2C_Slave_Receive_DMA(hi2c, rxData, sizeof(rxData));
 	} else {
-		// if the master requests the data from the slave
-		HAL_I2C_Slave_Transmit_DMA(hi2c, txData, sizeof(txData));
+		static uint8_t count;
+		static bool waitingForCount = true;
+		// if the master requests data from the slave
+		int available = rb_available_to_read(&i2cTxQ);
+		size_t len = 0;
+		if(available <= 0)
+		{
+			txData[0] = 0;
+			len = 1;
+		} else {
+			if(waitingForCount)
+			{
+				count = 123;
+				// read count into count
+				int ret = rb_read_from_buffer(&i2cTxQ, (char*)&count, sizeof(count));
+				if(ret)
+				{
+					printf("reading from ISR: %d\n\r", ret);
+					return;
+				}
+				len = 1;
+				txData[0] = count;
+#ifdef VERBOSE
+				printf("S %d (av: %d)\n\r", count, available);
+#endif // VERBOSE
+				if(0 == count)
+				{
+					printf("WTF\n\r");
+				}
+				waitingForCount = false;
+			} else {
+				if(count > int(sizeof(txData) - 1))
+				{
+					printf("reading from ISR2: %d\n\r", count);
+					return;
+				}
+				// read message body into txData
+				int ret = rb_read_from_buffer(&i2cTxQ, (char*)txData, count);
+				if(ret)
+				{
+					printf("reading from ISR3: %d\n\r", ret);
+					return;
+				}
+				len = count;
+#ifdef VERBOSE
+				printf("S [%d]: ", count);
+				for(size_t n = 0; n < count && n < 6; ++n)
+					printf("%02x ", txData[n]);
+				printf("\n\r");
+#endif // VERBOSE
+				waitingForCount = true;
+			}
+		}
+		txData[len] = computeChecksum(txData, len);
+		HAL_I2C_Slave_Transmit_DMA(hi2c, txData, len + 1); // include checksum
 	}
 }
 
 static void handleRxComplete(I2C_HandleTypeDef *hi2c)
 {
 	rxCount = sizeof(rxData) - __HAL_DMA_GET_COUNTER(hi2c->hdmarx);
-	processData(hi2c);
-	int ret = HAL_I2C_EnableListen_IT(hi2c);
+	i2cMidiDataRx(hi2c);
+	HAL_I2C_EnableListen_IT(hi2c);
 }
 
 static void handleTxComplete(I2C_HandleTypeDef *hi2c)
 {
 	txCount = sizeof(rxData) - __HAL_DMA_GET_COUNTER(hi2c->hdmatx);;
-	int ret = HAL_I2C_EnableListen_IT(hi2c);
+	HAL_I2C_EnableListen_IT(hi2c);
 }
 
 void HAL_I2C_SlaveRxCpltCallback(I2C_HandleTypeDef *hi2c)
@@ -125,7 +251,9 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c)
 				handleTxComplete(hi2c);
 			}
 		} else {
+			// e.g.: BERR
 			printf("I2C ERROR: %ld\n\r", HAL_I2C_GetError(hi2c));
+			HAL_I2C_EnableListen_IT(hi2c);
 		}
 	} else {
 		  // we cannot test this because we find no way of triggering it.
