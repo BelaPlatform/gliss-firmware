@@ -9,15 +9,24 @@ extern "C" {
 }
 #include "i2cExternal.h"
 
-constexpr size_t kRxSize = 257;
-static uint8_t rxData[kRxSize];
-static uint8_t txData[kRxSize];
+//#define VERBOSE
+//#define SIMULATE_ERRORS
+
+static enum I2cError {
+	kErrorNo = 0,
+	kOutgoingMaxMsgLength = 253, // higher values would interfere with the error reporting
+	kErrorFull = 254,
+	kErrorChecksum = 255,
+} errorCode;
+
+static uint8_t rxData[257];
+static uint8_t txData[kOutgoingMaxMsgLength + 1];
 static uint8_t rxCount = 0;
 static uint8_t txCount = 0;
 static uint8_t dir;
 static ring_buffer i2cRxQ;
 static ring_buffer i2cTxQ;
-#undef VERBOSE
+
 
 int i2cMidiInit()
 {
@@ -42,25 +51,35 @@ static void i2cMidiDataRx(I2C_HandleTypeDef* hi2c)
 {
 	if(!rxCount)
 		return;
-//	printf("Received %d bytes: ", rxCount);
 //	for(size_t n = 0; n < rxCount; ++n)
 //		printf("%d ", rxData[n]);
 //	printf("\n\r");
 	// placeholder while we craft a response
 	txData[0] = 0;
 	uint8_t checksum = computeChecksum(rxData, rxCount);
+#ifdef SIMULATE_ERRORS
+	static int cs = 0;
+	if(cs++ >= 6)
+		cs = 0;
+	if(4 == cs)
+		checksum += 1; // cause an error
+#endif // SIMULATE_ERRORS
 	if(checksum != rxData[rxCount - 1])
 	{
 		printf("chk\n\r"); // bad checksum
-		txData[0] = 0; // TODO: transmit error code
+		errorCode = kErrorChecksum;
 		return;
 	}
 	--rxCount; // remove checksum
 	int ret = rb_available_to_write(&i2cRxQ);
+#ifdef SIMULATE_ERRORS
+	if(10 == cs)
+		ret--;
+#endif // SIMULATE_ERRORS
 	if(ret < rxCount)
 	{
-		printf("space\n\r"); // not enough space
-		txData[0] = 0; // TODO: transmit error code
+		printf("full\n\r"); // not enough space
+		errorCode = kErrorFull;
 		return;
 	}
 	rb_write_to_buffer(&i2cRxQ, 2, &rxCount, sizeof(rxCount), (const char*)rxData, rxCount);
@@ -69,7 +88,7 @@ static void i2cMidiDataRx(I2C_HandleTypeDef* hi2c)
 int sysexSendI2c(const uint8_t* payload, size_t len)
 {
 	int ret = rb_available_to_write(&i2cTxQ);
-	if(int(len) > ret || len > 255)
+	if(int(len) > ret || len > kOutgoingMaxMsgLength)
 	{
 		printf("Can't fit this message\n\r");
 		return -1;
@@ -160,14 +179,18 @@ void HAL_I2C_AddrCallback(I2C_HandleTypeDef *hi2c, uint8_t TransferDirection, ui
 		// if the master requests data from the slave
 		int available = rb_available_to_read(&i2cTxQ);
 		size_t len = 0;
-		if(available <= 0)
+		if(kErrorNo != errorCode)
+		{
+			txData[0] = errorCode;
+			errorCode = kErrorNo;
+			len = 1;
+		} else if(available <= 0)
 		{
 			txData[0] = 0;
 			len = 1;
 		} else {
 			if(waitingForCount)
 			{
-				count = 123;
 				// read count into count
 				int ret = rb_read_from_buffer(&i2cTxQ, (char*)&count, sizeof(count));
 				if(ret)
