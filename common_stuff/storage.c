@@ -65,8 +65,10 @@ int storageErase(uint32_t sector)
 	eraseInit.Page = sector;
 	eraseInit.NbPages = 1;
 #endif // FLASH_HAS_SECTORS
-	HAL_FLASH_Unlock();
-	HAL_StatusTypeDef ret = HAL_FLASHEx_Erase(&eraseInit, &errorLoc);
+	HAL_StatusTypeDef ret = HAL_FLASH_Unlock();
+	if(ret)
+		printf("HAL_FLASH_Unlock: %d\n\r", ret);
+	ret = HAL_FLASHEx_Erase(&eraseInit, &errorLoc);
 	HAL_FLASH_Lock();
 	if(HAL_OK != ret) {
 		printError("erase", HAL_FLASH_GetError(), errorLoc);
@@ -117,7 +119,9 @@ int storageWriteStatic(uint32_t address, uint8_t* data, size_t len)
 		printf("Cannot write to flash because the destination has %u of %u non-erased bytes starting at %p\n\r", count, len, ptr);
 		return -3;
 	}
-	HAL_FLASH_Unlock();
+	int ret = HAL_FLASH_Unlock();
+	if(ret)
+		printf("HAL_FLASH_Unlock: %d\n\r", ret);
 #ifdef FLASH_HAS_SECTORS
 	const size_t kFlashWordSize = FLASH_NB_32BITWORD_IN_FLASHWORD * sizeof(uint32_t);
 	const int kFlashProgramType = FLASH_TYPEPROGRAM_FLASHWORD;
@@ -146,6 +150,7 @@ int storageWriteStatic(uint32_t address, uint8_t* data, size_t len)
 		);
 		if(HAL_OK != ret) {
 			printError("write", HAL_FLASH_GetError(), address);
+			printf("at idx %u\n\r", idx);
 			return -2;
 		}
 		address += kFlashWordSize ;
