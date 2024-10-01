@@ -45,6 +45,10 @@ static void printError(const char* id, uint32_t error, uint32_t loc)
 
 int storageErase(uint32_t sector)
 {
+	// On the STM32G4, writing 0xff is not the same as the word being erased
+	// This means that we cannot infer a page is empty by simply looking at it
+	// Therefore, we need to unconditionally erase pages
+#if 0
 	if(0 == countNonErasedBytes(getSectorStart(sector), kStorageSectorSize))
 	{
 #ifndef CFG_FLASHER
@@ -52,6 +56,7 @@ int storageErase(uint32_t sector)
 #endif // CFG_FLASHER
 		return 0;
 	}
+#endif
 	FLASH_EraseInitTypeDef eraseInit;
 	uint32_t errorLoc;
 	eraseInit.Banks = FLASH_BANK_1;
