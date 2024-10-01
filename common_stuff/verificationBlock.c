@@ -11,7 +11,7 @@
 #define GIT_HASHES ""
 #endif // has-include
 
-#define GLISS_VERSION "v2.0"
+#define GLISS_VERSION "v2.0.1"
 
 struct VerificationBlock kVerificationBlock ATTR = {
 #ifdef CFG_FLASHER
