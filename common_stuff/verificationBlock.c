@@ -11,11 +11,13 @@
 #define GIT_HASHES ""
 #endif // has-include
 
+#define GLISS_VERSION "v2.0"
+
 struct VerificationBlock kVerificationBlock ATTR = {
 #ifdef CFG_FLASHER
-	.stringId = "Gliss-flasher-v2.0",
+	.stringId = "Gliss-flasher-" GLISS_VERSION,
 #else
-	.stringId = "Gliss-v2.0",
+	.stringId = "Gliss-" GLISS_VERSION,
 #endif // CFG_FLASHER
 	.gitHashes = GIT_HASHES,
 	.reservedBytes = "",
